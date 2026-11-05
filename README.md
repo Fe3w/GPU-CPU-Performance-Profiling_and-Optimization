@@ -46,7 +46,7 @@ Measured on the hardware above (mean of 5 repetitions). W04 CPU numbers come fro
 | W04 P1 | CPU attention S1–S3, compiler-flag study, 1–20 thread sweep, tile-size choice | done: S1→S3 62× at N=1024 (7.5 → 469 GFLOP/s); default tiles S2 64×64, S3 32×64 from a temperature-logged rerun |
 | W04 P2 | GPU S1, S2a unfused, cuBLAS reference | done: S1→S2a 3.3–4.3×; S2a reaches 31–38% of the cuBLAS-based reference (N=512–8192), with the GPU at its 55 W power limit |
 | W04 P3 | GPU S2b fused kernel | done: one FlashAttention-2-style FP32 kernel (online softmax, no N×N buffer, peak device memory linear in N); faster than S2a at every N (1.5–2.1× at 32×32, 2.1–3.0× at 64×64, N=512–8192); DRAM bytes measured with Nsight Compute: ~21–42× fewer than S2a at N=2048–4096 |
-| W04 P4 | GPU S3 Tensor Core kernel | planned |
+| W04 P4 | GPU S3 Tensor Core kernel | design fixed, implementation next: FP16 (m16n16k16) and TF32 (m16n16k8) WMMA variants of the fused kernel, FP32 softmax and accumulation, 64×64 tiles |
 | W04 P5 | autotuning | planned |
 | W04 P6 | profiling and plots | planned |
 | W04 P7 | demo integration | planned |

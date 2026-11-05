@@ -1,7 +1,7 @@
 # W04 Plan: Fused Attention (Deep-Learning Workload)
 
 **Project:** GPU-CPU-Performance-Profiling_and-Optimization
-**Status:** P0–P3 done (CPU stages; GPU S1, S2a, REF_CUBLAS, S2b fused with E3 DRAM bytes); P4 (Tensor Core S3) next. See `docs/W04_PROGRESS.md` for what is measured
+**Status:** P0–P3 done (CPU stages; GPU S1, S2a, REF_CUBLAS, S2b fused with E3 DRAM bytes); P4 (Tensor Core S3) planned 6 Nov 2026 (decisions C22–C25), code next. See `docs/W04_PROGRESS.md` for what is measured
 **Hardware:** Intel Core i7-13650HX (6P+8E, AVX2/FMA) · RTX 4060 Laptop GPU (sm_89, 24 SMs, 8 GiB, 128-bit GDDR6)
 **Date:** 4 Nov 2026
 
@@ -57,7 +57,7 @@ All stages use the existing ID convention: `W04_ATTENTION_<CPU|GPU>_<S#>_<BASE|S
 | **S1_BASE_NAIVE** | 3 kernels: naive GEMM (QKᵀ) → one-thread-per-row softmax → naive GEMM (PV). Materializes S in global memory. | Baseline |
 | **S2a_SWOPT_UNFUSED** | Same 3-kernel structure, but with W03-S2 shared-memory tiled GEMMs and a warp-shuffle softmax (one warp per row). | Effect of better kernels **without** fusion |
 | **S2b_SWOPT_FUSED** | One kernel, FlashAttention-2 style. Each block owns `Br` query rows, loops over `Bc` K/V tiles in shared memory, uses online softmax (running max m and sum l), and writes only O. | Effect of **fusion**, compared with S2a |
-| **S3_HWACC_TENSOR_CORE** | S2b with WMMA for both inner GEMMs: FP16 inputs, FP32 accumulation, softmax kept in FP32. A TF32 variant keeps it consistent with W03. | Effect of Tensor Cores and reduced precision |
+| **S3_HWACC_TENSOR_CORE** | S2b with WMMA for both inner GEMMs: FP16 inputs, FP32 accumulation, softmax kept in FP32. A TF32 variant keeps it consistent with W03. Two binaries (`…_FP16`, `…_TF32`) from one kernel template (C22); default tile 64×64 for both (C24); FP16 conversion of Q, K, V timed separately (`prep_ms`, C23); TF32 rounds fragments explicitly, unlike W03-S3 (C25) | Effect of Tensor Cores and reduced precision |
 | *REF_CUBLAS* (not a stage) | `cublasSgemmStridedBatched` + S2a softmax + batched GEMM | Vendor unfused ceiling |
 | *REF_SDPA* (optional) | PyTorch `scaled_dot_product_attention` | Vendor fused ceiling |
 | *S4_COMPILER* (optional) | Triton fused-attention tutorial, or `torch.compile`, on the same shapes | Hand-written vs compiler-generated |
@@ -118,7 +118,9 @@ src/cpu/W04_ATTENTION/W04_ATTENTION_CPU_S3_HWACC_AVX2.cpp
 src/gpu/W04_ATTENTION/W04_ATTENTION_GPU_S1_BASE_NAIVE.cu
 src/gpu/W04_ATTENTION/W04_ATTENTION_GPU_S2a_SWOPT_UNFUSED.cu
 src/gpu/W04_ATTENTION/W04_ATTENTION_GPU_S2b_SWOPT_FUSED.cu
-src/gpu/W04_ATTENTION/W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE.cu
+src/gpu/W04_ATTENTION/W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16.cu
+src/gpu/W04_ATTENTION/W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32.cu
+src/gpu/W04_ATTENTION/w04_s3_tensor_core.cuh   shared S3 kernel template (C22)
 src/gpu/W04_ATTENTION/W04_ATTENTION_GPU_REF_CUBLAS.cu
 scripts/w04_sweep.sh                N-sweep + autotune, timestamped output folders
 scripts/w04_profile.sh              ncu/nsys/vtune, one kernel per command
@@ -127,6 +129,7 @@ tests/test_w04_correctness.sh       small-N all-stage pass/fail (runs in under 1
 ```
 
 **CSV schema** (one row per repetition): `workload, stage, variant, device, precision, n, bh, d, iters, rep, runtime_ms, gflops, alg_bytes, max_abs_err, max_rel_err, correct, peak_mem_bytes, br, bc, compiler_flags, timestamp, git_sha`
+(P0 appended `seed, input_case, warmup, reps, threads` (C1); P4 appends `prep_ms, max_rel_err_main` (C23), 29 columns.)
 
 Lessons from W01–W03 built in: one CLI for every binary (no positional/named mix-ups), timestamped and never-overwritten outputs (no repeat of the W01 console/CSV conflict), the git SHA in every row, and paired runs within one session.
 
