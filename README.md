@@ -37,6 +37,7 @@ Measured on the hardware above (mean of 5 repetitions). W04 CPU numbers come fro
 | W04 GPU (unfused) | S1→S2a ~3.4× at N=1024 (7.63 → 2.23 ms); cuBLAS-based reference 0.75 ms | Tiled GEMMs and a warp-per-row softmax; S2a's GEMMs are limited by shared-memory loads. With cuBLAS GEMMs the N×N softmax becomes the largest kernel (46% at N=8192): the cost that fusion removes |
 | W04 GPU (fused) | S2a→S2b 2.0–2.1× (32×32 tile) and 2.9–3.0× (64×64) at N=2048–8192; at N=4096: 38.75 → 18.77 / 13.33 ms. S2b 64×64 matches or beats the cuBLAS-based unfused reference from N=2048 | One kernel, no N×N intermediate: measured DRAM traffic drops ~33–42× at N=4096 (≈2.2 GB → 52–68 MB) and operational intensity rises from ~15 to 500–650 FLOP/B. The speedup also includes register-tiled inner GEMMs (fewer shared-memory loads per FMA), so it is not fusion alone |
 | W04 GPU (Tensor Cores) | S2b 64×64 → S3: FP16 5.0–5.2×, TF32 1.7–1.8× at N=2048–8192; at N=4096: 13.36 → 2.56 ms (FP16, 13.4 TFLOP/s) / 7.57 ms (TF32, 4.5 TFLOP/s). S1 → S3 FP16 52.6× at N=8192. Converting Q, K, V to FP16 adds 2–6% | Both inner GEMMs on the Tensor Cores with FP32 accumulation; max relative error ≤ 3.7e-4 against a double-precision reference. Nsight Compute: tensor pipe 22% busy, `exp` unit 6%: the kernel is limited by latency at low occupancy (2 warps per scheduler), not by any execution unit. TF32 is ~3× slower than FP16 (half the Tensor Core rate, more instructions, half the occupancy) |
+| W04 GPU (autotune) | Search over tile (Br × Bc ∈ {16, 32, 64}²) × warps per block (2, 4, 8) at N=2048 and 4096: S2b best 64×32 with 4 warps, 1.53–1.62× its old 32×32 default and 1.08–1.10× the 64×64 tile with 8 warps (12.40 ms, 2.77 TFLOP/s at N=4096); S3 TF32 best 64×32 with 4 warps, 1.32–1.36× its 64×64 default; S3 FP16 unchanged within noise (64×32 and 64×64, 4 warps, tie). `--use_fast_math` on S2b: 1–5% faster, same error (2.2e-6) | Fewer warps per block give each thread more of the tile (more FMAs per shared-memory load), and the 64×32 tile fits 2 blocks per SM, so 8 warps per SM come from two independent blocks. For S3 TF32 the smaller tile doubles the blocks per SM (1 → 2). Fast-math removes the `exp` range reduction and the exact-division path (25–29% fewer instructions in the kernel), but these are outside the inner FMA loops |
 
 ## Status
 
@@ -48,7 +49,7 @@ Measured on the hardware above (mean of 5 repetitions). W04 CPU numbers come fro
 | W04 P2 | GPU S1, S2a unfused, cuBLAS reference | done: S1→S2a 3.3–4.3×; S2a reaches 31–38% of the cuBLAS-based reference (N=512–8192), with the GPU at its 55 W power limit |
 | W04 P3 | GPU S2b fused kernel | done: one FlashAttention-2-style FP32 kernel (online softmax, no N×N buffer, peak device memory linear in N); faster than S2a at every N (1.5–2.1× at 32×32, 2.1–3.0× at 64×64, N=512–8192); DRAM bytes measured with Nsight Compute: ~21–42× fewer than S2a at N=2048–4096 |
 | W04 P4 | GPU S3 Tensor Core kernel | done: FP16 (WMMA m16n16k16, `HMMA.16816.F32`) and TF32 (m16n16k8, `HMMA.1684.F32.TF32`) variants of the fused kernel, FP32 softmax, accumulation and output, 64×64 tiles; FP16 5.0–5.2× and TF32 1.7–1.8× faster than the FP32 fused kernel at the same tile (N=2048–8192); Nsight Compute shows no saturated pipe (tensor pipe 22% busy) — the kernel is latency-bound at low occupancy |
-| W04 P5 | autotuning | in progress: warps-per-block parameter for the fused FP32 and Tensor Core kernels (output bitwise independent of the warp count), tile × warps search and `--use_fast_math` comparison scripts; measurements next |
+| W04 P5 | autotuning | done: 45 tile × warps configurations per N (36 skipped with a recorded reason), screen + full-protocol finals at N=2048/4096; new defaults in `src/common/w04_tuned.hpp` (S2b 64×32/4 warps, 1.5–1.6× the old default; S3 TF32 64×32/4 warps, 1.3–1.4×; S3 FP16 64×32 at N ≤ 3072, 64×64 above, a tie); heatmaps in `docs/figures/w04/`; `--use_fast_math` on S2b 1–5% faster at unchanged error |
 | W04 P6 | profiling and plots | planned |
 | W04 P7 | demo integration | planned |
 
@@ -129,7 +130,7 @@ build/W04_ATTENTION_GPU_S2b_SWOPT_FUSED --n 1024 --br 64 --bc 64
 build/W04_ATTENTION_GPU_S2b_SWOPT_FUSED --n 1024 --br 64 --bc 64 --warps 4
 ```
 
-The Tensor Core stage S3 has two binaries, one per input precision (default tile 64×64, same flags). The FP16 binary converts Q, K and V to half before the timed loop and reports that conversion time separately (`prepare` line, CSV column `prep_ms`):
+The Tensor Core stage S3 has two binaries, one per input precision (same flags; default tile from `src/common/w04_tuned.hpp`). The FP16 binary converts Q, K and V to half before the timed loop and reports that conversion time separately (`prepare` line, CSV column `prep_ms`):
 
 ```bash
 build/W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 --n 1024
