@@ -48,7 +48,7 @@ Measured on the hardware above (mean of 5 repetitions). W04 CPU numbers come fro
 | W04 P2 | GPU S1, S2a unfused, cuBLAS reference | done: S1→S2a 3.3–4.3×; S2a reaches 31–38% of the cuBLAS-based reference (N=512–8192), with the GPU at its 55 W power limit |
 | W04 P3 | GPU S2b fused kernel | done: one FlashAttention-2-style FP32 kernel (online softmax, no N×N buffer, peak device memory linear in N); faster than S2a at every N (1.5–2.1× at 32×32, 2.1–3.0× at 64×64, N=512–8192); DRAM bytes measured with Nsight Compute: ~21–42× fewer than S2a at N=2048–4096 |
 | W04 P4 | GPU S3 Tensor Core kernel | done: FP16 (WMMA m16n16k16, `HMMA.16816.F32`) and TF32 (m16n16k8, `HMMA.1684.F32.TF32`) variants of the fused kernel, FP32 softmax, accumulation and output, 64×64 tiles; FP16 5.0–5.2× and TF32 1.7–1.8× faster than the FP32 fused kernel at the same tile (N=2048–8192); Nsight Compute shows no saturated pipe (tensor pipe 22% busy) — the kernel is latency-bound at low occupancy |
-| W04 P5 | autotuning | planned |
+| W04 P5 | autotuning | planned: tile (Br × Bc) and warps-per-block search for the fused FP32 and Tensor Core kernels, plus a `--use_fast_math` comparison of the fused FP32 kernel |
 | W04 P6 | profiling and plots | planned |
 | W04 P7 | demo integration | planned |
 

@@ -1,7 +1,7 @@
 # W04 Plan: Fused Attention (Deep-Learning Workload)
 
 **Project:** GPU-CPU-Performance-Profiling_and-Optimization
-**Status:** P0–P3 done (CPU stages; GPU S1, S2a, REF_CUBLAS, S2b fused with E3 DRAM bytes); P4 (Tensor Core S3, FP16 and TF32) done 6 Nov 2026 (decisions C22–C26; H3 verdict in PROGRESS); P5 (autotune) next. See `docs/W04_PROGRESS.md` for what is measured
+**Status:** P0–P3 done (CPU stages; GPU S1, S2a, REF_CUBLAS, S2b fused with E3 DRAM bytes); P4 (Tensor Core S3, FP16 and TF32) done 6 Nov 2026 (decisions C22–C26; H3 verdict in PROGRESS); P5 (autotune E7 + GPU fast-math study) planned 6 Nov 2026 (decisions C27–C31: warps axis, `--warps` + 30-column CSV, tuned-defaults header), code next. See `docs/W04_PROGRESS.md` for what is measured
 **Hardware:** Intel Core i7-13650HX (6P+8E, AVX2/FMA) · RTX 4060 Laptop GPU (sm_89, 24 SMs, 8 GiB, 128-bit GDDR6)
 **Date:** 4 Nov 2026
 
@@ -92,7 +92,7 @@ All stages use the existing ID convention: `W04_ATTENTION_<CPU|GPU>_<S#>_<BASE|S
 | E4 Kernel diagnosis | ncu sections: SpeedOfLight, MemoryWorkloadAnalysis, ComputeWorkloadAnalysis, Occupancy, WarpStateStats, SourceCounters | stall reasons (Barrier, MIO Throttle, Long Scoreboard), shared-memory bank conflicts, tensor-pipe utilization |
 | E5 Launch overhead | `nsys profile` on S1/S2a (3 kernels) vs S2b (1 kernel) | timeline gaps: first real use of Nsight Systems in the project |
 | E6 Peak memory vs N | `cudaMemGetInfo` before/after | O(N²) vs O(N) footprint plot |
-| E7 Autotune | sweep `Br, Bc ∈ {16, 32, 64}` and warps per block | heatmap; selected configuration |
+| E7 Autotune | sweep `Br, Bc ∈ {16, 32, 64}` and warps per block ∈ {2, 4, 8} (S2b all; S3 only W ≤ Br/16, C27); screen then top-3 finals at N=2048, 4096 | heatmap; selected configuration in `src/common/w04_tuned.hpp` (C29) |
 | E8 CPU | VTune hotspots, memory-access, uarch-exploration; thread sweep 1–20 | LLC-miss drop S1→S2; L2 hit rate of S2 at N=2048 (K/V fits the 1.25 MiB P-core L2) vs N=4096 (does not); FMA/vector use in S3 |
 | E9 *Decode case* (optional) | `N_q = 1`, `N_kv = 4096` | inference decode is memory-bound, which ties back to W01/W02 |
 
