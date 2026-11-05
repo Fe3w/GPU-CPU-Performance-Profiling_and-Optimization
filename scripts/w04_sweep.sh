@@ -1,18 +1,26 @@
 #!/usr/bin/env bash
 # -----------------------------------------------------------------------------
-# W04 ATTENTION — benchmark sweeps (CPU part: P1)
+# W04 ATTENTION — benchmark sweeps (CPU: P1, GPU: P2+)
 #
 #   bash scripts/w04_sweep.sh cpu-nsweep    runtime vs N, S1/S2/S3
 #   bash scripts/w04_sweep.sh cpu-tiles     Br x Bc grid for S2/S3 at N = 1024, 4096
 #   bash scripts/w04_sweep.sh cpu-threads   S2/S3 at T = 1..20, N = 1024, 2048
 #   bash scripts/w04_sweep.sh cpu-flags     compiler-flag study (build/flagstudy/)
-#   bash scripts/w04_sweep.sh cpu-all       all of the above in one session folder
+#   bash scripts/w04_sweep.sh cpu-all       all CPU experiments in one session folder
+#   bash scripts/w04_sweep.sh gpu-nsweep    runtime vs N, GPU S1/S2a/REF_CUBLAS/S2b
 #
 # Output: results/raw/W04_ATTENTION/<YYYYMMDD-HHMMSS>/ (refused if it exists)
 #   run_info.txt  machine state at the start (CPU, caches, governor, power, GPU clocks)
 #   commands.log  every command with its OpenMP environment
 #   <experiment>/<STAGE_ID>.csv   append-only, one row per repetition
 #   logs/         stdout/stderr of every run
+#   gpu_state.csv (GPU experiments) nvidia-smi every 250 ms: SM/memory clock,
+#                 power, temperature, clock-event reasons; commands.log lines
+#                 carry a start time so each run can be matched to its samples
+#
+# GPU sweep: every (N, stage) runs once per round, GPU_ROUNDS rounds (default 3);
+# the stage order inside each N is rotated by one per round, so no stage is
+# always first after a size change. Stages of one N are adjacent (paired).
 # Codegen evidence of the flag study (text): profiling/W04_ATTENTION/codegen/<same TS>/
 #
 # All CPU runs use OMP_PROC_BIND=close OMP_PLACES=cores (20 threads unless the
@@ -26,7 +34,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-usage() { sed -n '4,9p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
+usage() { sed -n '4,10p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 [[ $# -eq 1 ]] || usage
 CMD=$1
 
@@ -39,7 +47,12 @@ RUN="$RESULTS_ROOT/$TS"
 S1=W04_ATTENTION_CPU_S1_BASE
 S2=W04_ATTENTION_CPU_S2_SWOPT_BLOCKED_OMP
 S3=W04_ATTENTION_CPU_S3_HWACC_AVX2
-NTHREADS_ALL=20
+G1=W04_ATTENTION_GPU_S1_BASE_NAIVE
+G2A=W04_ATTENTION_GPU_S2a_SWOPT_UNFUSED
+GREF=W04_ATTENTION_GPU_REF_CUBLAS
+G2B=W04_ATTENTION_GPU_S2b_SWOPT_FUSED
+NTHREADS_ALL=20   # also the host threads for the (untimed) double reference of GPU runs
+GPU_ROUNDS=${GPU_ROUNDS:-3}
 
 # Protocol (plan): 2 warmups, 20 iterations, 5 repetitions, BH = 8, d = 64.
 PROTO=(--warmup 2 --iters 20 --reps 5)
@@ -50,13 +63,15 @@ NS_FUSED=(512 1024 2048 4096 8192)
 NS_TILES=(1024 4096)
 NS_THREADS=(1024 2048)
 NS_FLAGS=(1024 2048)
+NS_GPU=(512 1024 2048 4096 8192)
 BRS=(16 32 64 128)
 BCS=(32 64 128 256)
 THREADS=$(seq 1 20)
 if [[ "$QUICK" == 1 ]]; then
     PROTO=(--warmup 0 --iters 1 --reps 2); PROTO_S1_LARGE=("${PROTO[@]}")
     SHAPE=(--bh 2 --d 64)
-    NS_S1=(128 256); NS_FUSED=(128 256); NS_TILES=(256); NS_THREADS=(256); NS_FLAGS=(256)
+    NS_S1=(128 256); NS_FUSED=(128 256); NS_TILES=(256); NS_THREADS=(256); NS_FLAGS=(256); NS_GPU=(128 256)
+    GPU_ROUNDS=2
     BRS=(16 32); BCS=(32 64); THREADS="1 2 20"
 fi
 
@@ -93,6 +108,7 @@ start_run() {
         echo "epp         : $(cat /sys/devices/system/cpu/cpu0/cpufreq/energy_performance_preference 2>/dev/null || echo n/a)"
         echo "no_turbo    : $(cat /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo n/a)"
         echo "gpu         : $(nvidia-smi --query-gpu=clocks.sm,clocks.mem,power.draw,temperature.gpu --format=csv,noheader 2>/dev/null || echo n/a)"
+        echo "gpu limits  : $(nvidia-smi --query-gpu=enforced.power.limit,power.default_limit,power.max_limit,clocks.max.sm --format=csv,noheader 2>/dev/null || echo n/a) (enforced, default, max power; max SM clock)"
         echo "--- per-CPU caches (sysfs) ---"
         for c in /sys/devices/system/cpu/cpu[0-9]*; do
             printf '%s L1d=%s L2=%s (shared %s) max_khz=%s\n' "$(basename "$c")" \
@@ -112,7 +128,7 @@ run() {
     mkdir -p "$(dirname "$csv")" "$(dirname "$log")"
     local envs=(OMP_NUM_THREADS="$threads" OMP_PROC_BIND=close OMP_PLACES=cores)
     [[ -n "${AFFINITY:-}" ]] && envs+=(OMP_DISPLAY_AFFINITY=TRUE)
-    echo "${envs[*]} $bin $* --out $csv" >> "$RUN/commands.log"
+    echo "[$(date +%FT%T.%3N)] ${envs[*]} $bin $* --out $csv" >> "$RUN/commands.log"
     if env "${envs[@]}" "$bin" "$@" --out "$csv" > "$log" 2>&1 \
         && [[ "$(grep -E '^Correct : ' "$log" | tail -n 1)" == "Correct : YES" ]]; then
         printf '  ok    %-60s %s\n' "$logname" "$(grep -oE '\| [0-9.]+ ± [0-9.]+ ms \| [0-9.]+ GFLOP/s' "$log" | head -n 1)"
@@ -219,13 +235,43 @@ selftest_fastmath() {
     fi
 }
 
+# GPU state sampler: runs in the background for the whole GPU experiment.
+GPU_SAMPLER_PID=
+start_gpu_sampler() {
+    nvidia-smi --query-gpu=timestamp,clocks.sm,clocks.mem,power.draw,temperature.gpu,pstate,clocks_event_reasons.active \
+        --format=csv -lms 250 > "$RUN/gpu_state.csv" 2>/dev/null &
+    GPU_SAMPLER_PID=$!
+    trap 'stop_gpu_sampler' EXIT
+}
+stop_gpu_sampler() {
+    [[ -n "$GPU_SAMPLER_PID" ]] && kill "$GPU_SAMPLER_PID" 2>/dev/null && wait "$GPU_SAMPLER_PID" 2>/dev/null
+    GPU_SAMPLER_PID=
+}
+
+gpu_nsweep() {
+    echo "== GPU N sweep ($GPU_ROUNDS rounds, stage order rotated per round) =="
+    start_gpu_sampler
+    local stages=("$G1" "$G2A" "$GREF" "$G2B") k=${#stages[@]}
+    for ((round = 1; round <= GPU_ROUNDS; round++)); do
+        for n in "${NS_GPU[@]}"; do
+            for ((s = 0; s < k; s++)); do
+                local st=${stages[$(( (s + round - 1) % k ))]}
+                run "$RUN/gpu_nsweep/$st.csv" "gpu_nsweep/${st}_n${n}_r$round" "$NTHREADS_ALL" "build/$st" \
+                    --n "$n" "${SHAPE[@]}" "${PROTO[@]}"
+            done
+        done
+    done
+    stop_gpu_sampler
+}
+
 # ------------------------------------------------------------------- main
 case "$CMD" in
-    cpu-nsweep|cpu-tiles|cpu-threads|cpu-flags|cpu-all) ;;
+    cpu-nsweep|cpu-tiles|cpu-threads|cpu-flags|cpu-all) NEED=("$S1" "$S2" "$S3") ;;
+    gpu-nsweep) NEED=("$G1" "$G2A" "$GREF" "$G2B") ;;
     *) usage ;;
 esac
 make --no-print-directory w04 >/dev/null
-for b in "$S1" "$S2" "$S3"; do require_bin "$b"; done
+for b in "${NEED[@]}"; do require_bin "$b"; done
 check_sha
 start_run
 case "$CMD" in
@@ -234,6 +280,7 @@ case "$CMD" in
     cpu-threads) cpu_threads ;;
     cpu-flags)   cpu_flags ;;
     cpu-all)     cpu_nsweep; cpu_tiles; cpu_threads; cpu_flags ;;
+    gpu-nsweep)  gpu_nsweep ;;
 esac
 echo "== done: $FAILS failed runs; results in $RUN =="
 (( FAILS == 0 ))

@@ -9,9 +9,15 @@
 #   4. AVX2 exp accuracy test (exhaustive on the softmax range)
 #   5. every registered stage: n in {128, 256} x input in {normal, large_logits},
 #      small bh, 1 iteration; requires exit 0 and the exact line "Correct : YES".
-#      Tunable stages also run two ragged-tile cases (N not a multiple of Br/Bc,
-#      one with d = 40)
-#   6. machine-code evidence: CPU S3 must contain packed-single ymm FMAs
+#      Every stage also runs n = 203, d = 40 (N not a multiple of any tile, d not
+#      a multiple of 16/64). Tunable stages also run ragged-tile cases
+#      (N not a multiple of Br/Bc, one with d = 40). Kind 1 = any Br/Bc (CPU);
+#      kind 2 = compiled tile set Br, Bc in {16, 32, 64} (GPU S2b): all 9 tiles
+#      at n = 203 plus one d = 40 case
+#   6. direct stage-vs-stage check: GPU S2b vs S2a at n = 1024 (O dumped via
+#      W04_DUMP_O, compared by tools/w04_compare_o.py, normwise rel <= 1e-4)
+#   7. machine-code evidence: CPU S3 must contain packed-single ymm FMAs; GPU
+#      S2b must use shared memory (LDS) and shuffles (SHFL), and no HMMA
 #
 # Output goes to build/test_out/<timestamp>/ (git-ignored), never to results/.
 # Must finish in under 60 s.
@@ -58,13 +64,17 @@ echo "== AVX2 exp =="
 run_check "exp256_ps accuracy" "$OUT/exp_avx2.log" build/W04_EXP_AVX2_TEST
 grep -E "ulp at" "$OUT/exp_avx2.log" | sed 's/^/      /' || true
 
-# Registered stages, one per line: "<binary name> <tunable: 0|1>".
+# Registered stages, one per line: "<binary name> <tunable: 0|1|2>".
 # Added phase by phase (P1: CPU, P2: GPU S1/S2a/REF_CUBLAS, P3: S2b, P4: S3).
 # A registered stage whose binary is missing is a FAIL.
 STAGES=(
     "W04_ATTENTION_CPU_S1_BASE 0"
     "W04_ATTENTION_CPU_S2_SWOPT_BLOCKED_OMP 1"
     "W04_ATTENTION_CPU_S3_HWACC_AVX2 1"
+    "W04_ATTENTION_GPU_S1_BASE_NAIVE 0"
+    "W04_ATTENTION_GPU_S2a_SWOPT_UNFUSED 0"
+    "W04_ATTENTION_GPU_REF_CUBLAS 0"
+    "W04_ATTENTION_GPU_S2b_SWOPT_FUSED 2"
 )
 
 echo "== stages (${#STAGES[@]} registered) =="
@@ -83,8 +93,21 @@ for entry in "${STAGES[@]}"; do
                 --input "$input" --out "$OUT/${name}.csv"
         done
     done
+    for input in normal large_logits; do
+        log="$OUT/${name}_n203d40_${input}.log"
+        run_check "$name n=203 d=40 $input" "$log" \
+            "$bin" --n 203 --d 40 --bh 2 --iters 1 --reps 1 --warmup 0 \
+            --input "$input" --out "$OUT/${name}.csv"
+    done
+    shapes=()
     if [[ "$tunable" == 1 ]]; then
-        for shape in "--n 200 --d 64 --br 32 --bc 48" "--n 203 --d 40 --br 5 --bc 24"; do
+        shapes=("--n 200 --d 64 --br 32 --bc 48" "--n 203 --d 40 --br 5 --bc 24")
+    elif [[ "$tunable" == 2 ]]; then
+        for br in 16 32 64; do for bc in 16 32 64; do shapes+=("--n 203 --d 64 --br $br --bc $bc"); done; done
+        shapes+=("--n 203 --d 40 --br 64 --bc 16")
+    fi
+    if (( ${#shapes[@]} > 0 )); then
+        for shape in "${shapes[@]}"; do
             for input in normal large_logits; do
                 tag=$(echo "$shape" | tr -d ' -' )
                 log="$OUT/${name}_${tag}_${input}.log"
@@ -97,12 +120,41 @@ for entry in "${STAGES[@]}"; do
     fi
 done
 
+echo "== S2b vs S2a (n=1024, direct O comparison) =="
+G2A_BIN=build/W04_ATTENTION_GPU_S2a_SWOPT_UNFUSED
+G2B_BIN=build/W04_ATTENTION_GPU_S2b_SWOPT_FUSED
+if [[ -x "$G2A_BIN" && -x "$G2B_BIN" ]]; then
+    for input in normal large_logits; do
+        for b in "$G2A_BIN" "$G2B_BIN"; do
+            nm=$(basename "$b")
+            W04_DUMP_O="$OUT/O_${nm}_n1024_${input}.bin" run_check "$nm n=1024 $input (dump O)" \
+                "$OUT/${nm}_n1024_${input}.log" \
+                "$b" --n 1024 --bh 2 --d 64 --iters 1 --reps 1 --warmup 0 --input "$input" --out "$OUT/${nm}.csv"
+        done
+        run_check "S2b vs S2a n=1024 $input (normwise rel <= 1e-4)" "$OUT/cmp_s2b_s2a_n1024_${input}.log" \
+            python3 tools/w04_compare_o.py "$OUT/O_W04_ATTENTION_GPU_S2b_SWOPT_FUSED_n1024_${input}.bin" \
+            "$OUT/O_W04_ATTENTION_GPU_S2a_SWOPT_UNFUSED_n1024_${input}.bin" --tol 1e-4
+        grep -E '^compare' "$OUT/cmp_s2b_s2a_n1024_${input}.log" | sed 's/^/      /' || true
+    done
+else
+    bad "S2b vs S2a comparison (binary missing)"
+fi
+
 echo "== machine code =="
 S3_BIN=build/W04_ATTENTION_CPU_S3_HWACC_AVX2
 if [[ -x "$S3_BIN" ]]; then
     nfma=$(objdump -d --no-show-raw-insn "$S3_BIN" | grep -cE 'vfmadd[0-9]+ps.*ymm' || true)
     if (( nfma > 0 )); then ok "CPU S3 contains $nfma ymm vfmadd*ps instructions"
     else bad "CPU S3 contains no ymm vfmadd*ps instructions"; fi
+fi
+if [[ -x "$G2B_BIN" ]]; then
+    sass=$(cuobjdump -sass "$G2B_BIN")
+    nlds=$(grep -cE '\bLDS' <<<"$sass" || true)
+    nshfl=$(grep -c 'SHFL' <<<"$sass" || true)
+    nhmma=$(grep -c 'HMMA' <<<"$sass" || true)
+    if (( nlds > 0 && nshfl > 0 && nhmma == 0 )); then
+        ok "GPU S2b SASS: $nlds LDS, $nshfl SHFL, 0 HMMA (SIMT FP32, shared-memory tiles, shuffle reductions)"
+    else bad "GPU S2b SASS: LDS=$nlds SHFL=$nshfl HMMA=$nhmma (expected LDS>0, SHFL>0, HMMA=0)"; fi
 fi
 
 ELAPSED=$((SECONDS - START))

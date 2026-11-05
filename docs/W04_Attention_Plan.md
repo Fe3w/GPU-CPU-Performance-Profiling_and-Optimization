@@ -1,7 +1,7 @@
 # W04 Plan: Fused Attention (Deep-Learning Workload)
 
 **Project:** GPU-CPU-Performance-Profiling_and-Optimization
-**Status:** P0 done; P1 (CPU stages) implemented. See `docs/W04_PROGRESS.md` for what is measured
+**Status:** P0–P2 done (CPU stages; GPU S1, S2a, REF_CUBLAS); P3 step 1 (S2b code and tests) done, sweep and E3 next. See `docs/W04_PROGRESS.md` for what is measured
 **Hardware:** Intel Core i7-13650HX (6P+8E, AVX2/FMA) · RTX 4060 Laptop GPU (sm_89, 24 SMs, 8 GiB, 128-bit GDDR6)
 **Date:** 4 Nov 2026
 
@@ -40,7 +40,7 @@ The new lesson is **fusion**. In W01–W03, operational intensity (OI) is fixed 
 | Layout | Row-major `[BH][N][d]`, FP32 inputs (FP16 copies for S3) |
 | FLOPs (model) | `4·BH·N²·d` (two GEMMs); softmax counted separately as about `5·BH·N²` |
 | Minimum bytes | `4 tensors × BH·N·d × 4 B` (Q, K, V, O). **Algorithmic OI = N/4** (256 FLOP/B at N=1024) |
-| Naive bytes | Minimum plus about `4 × BH·N² × 4 B` (write S, read S, write P, read P). **OI ≈ d/4 ≈ 16 FLOP/B**, independent of N |
+| Naive bytes | Minimum plus about `4 × BH·N² × 4 B` (write S, read S, write P, read P). **OI ≈ d/4 ≈ 16 FLOP/B**, independent of N. As implemented (decision C17, P2): S2a/REF make 5 passes (≈ 20·BH·N² B, OI ≈ 12.8) and GPU S1 makes 7 (≈ 28·BH·N² B, OI ≈ 9.1), before L2 hits. P6 uses these counts |
 
 The gap between those two OI values (≈16 → ≈256 at N=1024) is the headline quantity W04 measures.
 
@@ -79,7 +79,7 @@ All stages use the existing ID convention: `W04_ATTENTION_<CPU|GPU>_<S#>_<BASE|S
 - Reference: double-precision CPU attention with numerically stable softmax (subtract the row max), using OpenMP.
 - Report both `max_abs_err` and `max_rel_err` against double, as the W02 lesson requires.
 - Tolerances: FP32 stages ≤ 1e-4 relative; TF32 ≤ 5e-3; FP16 ≤ 1e-2. Record the actual values; tolerances only decide the YES/NO flag.
-- **Stability test:** a "large logits" input (Q, K scaled ×30). Naive softmax without max subtraction overflows, while online softmax must pass. This tests the algorithm, not just the arithmetic.
+- **Stability test:** a "large logits" input (Q, K scaled ×12; changed from ×30 in P0, decision C2b: at ×30 the FP32 rounding of Q·K alone exceeds the 1e-4 FP32 tolerance). Naive softmax without max subtraction overflows, while online softmax must pass. This tests the algorithm, not just the arithmetic.
 - Every stage also checks that each output row of `P` sums to 1 (±tol) on a sampled subset.
 
 ## 6. Measurements and profiling
@@ -160,7 +160,7 @@ After that comes the combined re-test of W01–W04, then the README, then the sa
 |---|---|
 | The WMMA fragment layout is opaque, so softmax can't act on fragments directly | Store the accumulator to shared memory, run softmax there, reload. Simple first, faster later. |
 | S2b is slower than S2a at small N (as the minimal repo found) | Expected and worth reporting. Show the crossover N. |
-| Laptop clocks and power cap drift | Mains power, Performance mode, record `nvidia-smi` clocks per run, paired runs |
+| Laptop clocks and power cap drift | Mains power, Performance mode, record `nvidia-smi` clocks per run, paired runs. **Measured:** CPU runs at 81–96 °C under load (P1); the GPU is held at its 55 W default power limit, so each GPU stage runs at its own clock (P2). Mitigation in use: interleaved rounds with per-run temperature/clock logging (`w04_controlled.sh`, `gpu-nsweep`); fixed clocks need root (user decision) |
 | A 4096-size double reference is slow | Full reference up to N=2048; sampled rows above that |
 | Scope creep (backward pass, causal, Triton) | Backward pass out of scope; causal, S4 and E9 optional |
 

@@ -25,7 +25,7 @@ Every workload follows the same ladder:
 
 ## Key results so far
 
-Measured on the hardware above (mean of 5 repetitions). W04 CPU numbers come from one session on a laptop that reached ~97 °C under load, so differences below ~10–15% between experiments are not significant:
+Measured on the hardware above (mean of 5 repetitions). W04 CPU numbers come from one session on a laptop that reached ~97 °C under load, so differences below ~10–15% between experiments are not significant. W04 GPU numbers are medians of 3 interleaved rounds with the GPU at its default 55 W power limit, so stages are compared at equal power, not at equal clock:
 
 | Workload | Result | Why |
 |---|---|---|
@@ -34,7 +34,8 @@ Measured on the hardware above (mean of 5 repetitions). W04 CPU numbers come fro
 | W03 CPU | ~121× faster (0.71 → 86 GFLOP/s) | Cache blocking × threads × 8-wide FMA |
 | W03 GPU | ~3.5× faster (2.83 → 0.80 ms) | Shared-memory reuse, then Tensor Cores (`HMMA` verified in SASS) |
 | W04 CPU | ~62× faster at N=1024 (285.8 → 4.59 ms; 7.5 → 469 GFLOP/s) | Fusion + blocking (S1→S2 28.8×), then 8-wide FMA and a vector `exp` (S2→S3 2.2×), on 20 threads |
-| W04 GPU | *in progress, see status* | Fusion removes the N×N intermediate from DRAM |
+| W04 GPU (unfused) | S1→S2a ~3.4× at N=1024 (7.63 → 2.23 ms); cuBLAS-based reference 0.75 ms | Tiled GEMMs and a warp-per-row softmax; S2a's GEMMs are limited by shared-memory loads. With cuBLAS GEMMs the N×N softmax becomes the largest kernel (46% at N=8192): the cost that fusion removes |
+| W04 GPU (fused) | *in progress, see status* | Fusion removes the N×N intermediate from DRAM |
 
 ## Status
 
@@ -43,8 +44,8 @@ Measured on the hardware above (mean of 5 repetitions). W04 CPU numbers come fro
 | W01–W03 | benchmarks, profiling, analysis | done |
 | W04 P0 | harness, double-precision reference, correctness tests | done |
 | W04 P1 | CPU attention S1–S3, compiler-flag study, 1–20 thread sweep, tile-size choice | done: S1→S3 62× at N=1024 (7.5 → 469 GFLOP/s); default tiles S2 64×64, S3 32×64 from a temperature-logged rerun |
-| W04 P2 | GPU S1, S2a unfused, cuBLAS reference | planned |
-| W04 P3 | GPU S2b fused kernel | planned |
+| W04 P2 | GPU S1, S2a unfused, cuBLAS reference | done: S1→S2a 3.3–4.3×; S2a reaches 31–38% of the cuBLAS-based reference (N=512–8192), with the GPU at its 55 W power limit |
+| W04 P3 | GPU S2b fused kernel | code and tests done (one FlashAttention-2-style FP32 kernel, online softmax, no N×N buffer: peak device memory grows linearly with N); sweep and DRAM-traffic measurements pending |
 | W04 P4 | GPU S3 Tensor Core kernel | planned |
 | W04 P5 | autotuning | planned |
 | W04 P6 | profiling and plots | planned |
@@ -99,6 +100,19 @@ CPU tunable stages also accept `--br` and `--bc` (query and key/value tile sizes
 
 ```bash
 bash scripts/w04_sweep.sh cpu-all      # writes results/raw/W04_ATTENTION/<YYYYMMDD-HHMMSS>/
+```
+
+GPU N sweep (S1, S2a, cuBLAS reference, S2b fused; 3 interleaved rounds with GPU clock, power and temperature logged), and a per-stage summary of a run folder:
+
+```bash
+bash scripts/w04_sweep.sh gpu-nsweep
+python3 tools/w04_summary.py results/raw/W04_ATTENTION/<run folder>
+```
+
+S2b tile size is selectable (`--br`, `--bc` in {16, 32, 64}), e.g.:
+
+```bash
+build/W04_ATTENTION_GPU_S2b_SWOPT_FUSED --n 1024 --br 64 --bc 64
 ```
 
 ## Repository layout
