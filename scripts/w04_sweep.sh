@@ -7,7 +7,9 @@
 #   bash scripts/w04_sweep.sh cpu-threads   S2/S3 at T = 1..20, N = 1024, 2048
 #   bash scripts/w04_sweep.sh cpu-flags     compiler-flag study (build/flagstudy/)
 #   bash scripts/w04_sweep.sh cpu-all       all CPU experiments in one session folder
-#   bash scripts/w04_sweep.sh gpu-nsweep    runtime vs N, GPU S1/S2a/REF_CUBLAS/S2b (32x32, 64x64)/S3 (FP16, TF32)
+#   bash scripts/w04_sweep.sh gpu-nsweep    runtime vs N, GPU S1/S2a/REF_CUBLAS/S2b (32x32, 64x64)/S3 (FP16, TF32), + tuned defaults
+#   bash scripts/w04_sweep.sh gpu-autotune  E7: Br x Bc x warps screen + finals for S2b, S3 FP16/TF32 (P5)
+#   bash scripts/w04_sweep.sh gpu-flags     S2b with and without --use_fast_math: checks, speed, SASS (P5)
 #
 # Output: results/raw/W04_ATTENTION/<YYYYMMDD-HHMMSS>/ (refused if it exists)
 #   run_info.txt  machine state at the start (CPU, caches, governor, power, GPU clocks)
@@ -27,14 +29,34 @@
 # thread sweep sets fewer). Binaries built from a "-dirty" tree or without git
 # are refused unless ALLOW_DIRTY=1, so every CSV row points to a real commit.
 #
+# E7 autotune (gpu-autotune, decisions C27-C30): every (Br, Bc, W) of
+# Br, Bc in {16, 32, 64} x W in {2, 4, 8} is probed once with a tiny run whose
+# output goes to /dev/null; cells the binary refuses (exit 2) are written to
+# e7/skipped.csv with the binary's reason, once per N. At each N in NS_E7 the
+# valid cells of all three stages run once in one shuffled order (seed E7_SEED,
+# recorded in run_info.txt) with --iters 10 --reps 3 (screen); then the top 3
+# per stage and N plus the incumbent default (tools/w04_e7_select.py
+# finalists) run with the full protocol in GPU_ROUNDS interleaved rounds. All
+# rows go to one CSV, e7/W04_E7_AUTOTUNE.csv (screen and final rows differ in
+# iters/reps). Registers, stack and shared memory per instance:
+# profiling/W04_ATTENTION/codegen/<TS>/e7_resources.csv.
+#
+# Fast-math (gpu-flags, C31): build/flagstudy/<S2b>.fastmath vs build/<S2b>.
+# Correctness of both on every (Br, Bc, W) at n = 203 and the default at
+# n = 128/256, both inputs (flags_check/); a direct O comparison fast vs
+# accurate at n = 1024 (logs/flags/compare_*); speed at NS_FM for the configs
+# in FM_CONFIGS ("br bc w;..."; default 32x32 W8 and 64x64 W8) in GPU_ROUNDS
+# interleaved rounds, one CSV per (build, config) in flags/; SASS counts and
+# MUFU.EX2 windows: profiling/W04_ATTENTION/codegen/<TS>/s2b_fastmath_sass.txt.
+#
 # Environment overrides (for smoke tests): QUICK=1 (tiny sizes, 1 iteration),
-# RESULTS_ROOT, PROFILING_ROOT, ALLOW_DIRTY=1.
+# RESULTS_ROOT, PROFILING_ROOT, ALLOW_DIRTY=1, E7_SEED, FM_CONFIGS.
 # Exit status 1 if any run did not end with "Correct : YES".
 # -----------------------------------------------------------------------------
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-usage() { sed -n '4,10p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
+usage() { sed -n '4,12p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 [[ $# -eq 1 ]] || usage
 CMD=$1
 
@@ -66,6 +88,11 @@ NS_TILES=(1024 4096)
 NS_THREADS=(1024 2048)
 NS_FLAGS=(1024 2048)
 NS_GPU=(512 1024 2048 4096 8192)
+NS_E7=(2048 4096)
+NS_FM=(1024 2048 4096)
+E7_SEED=${E7_SEED:-20261106}
+FM_CONFIGS=${FM_CONFIGS:-"32 32 8;64 64 8"}
+PROTO_SCREEN=(--warmup 2 --iters 10 --reps 3)
 BRS=(16 32 64 128)
 BCS=(32 64 128 256)
 THREADS=$(seq 1 20)
@@ -73,6 +100,7 @@ if [[ "$QUICK" == 1 ]]; then
     PROTO=(--warmup 0 --iters 1 --reps 2); PROTO_S1_LARGE=("${PROTO[@]}")
     SHAPE=(--bh 2 --d 64)
     NS_S1=(128 256); NS_FUSED=(128 256); NS_TILES=(256); NS_THREADS=(256); NS_FLAGS=(256); NS_GPU=(128 256)
+    NS_E7=(128 256); NS_FM=(128 256); PROTO_SCREEN=(--warmup 0 --iters 1 --reps 3)
     GPU_ROUNDS=2
     BRS=(16 32); BCS=(32 64); THREADS="1 2 20"
 fi
@@ -256,9 +284,14 @@ gpu_nsweep() {
     # Entries are "<name>|<binary>|<extra args>". The name is the CSV and log
     # name, so a second tile of the same binary gets its own summary row
     # (decision C21: S2b at its default 32x32 tile and at 64x64). P4 adds the
-    # two S3 Tensor Core variants at their default 64x64 tile (C24).
-    local entries=("$G1|$G1|" "$G2A|$G2A|" "$GREF|$GREF|" "$G2B|$G2B|"
-                   "${G2B}_64x64|$G2B|--br 64 --bc 64" "$G3H|$G3H|" "$G3T|$G3T|")
+    # two S3 Tensor Core variants at their default 64x64 tile (C24). P5 (C29)
+    # pins those entries to explicit tiles, so each CSV name keeps its P3/P4
+    # meaning after the defaults change, and adds one "_tuned" entry per
+    # tunable stage that runs without tile flags (w04_tuned.hpp defaults).
+    local entries=("$G1|$G1|" "$G2A|$G2A|" "$GREF|$GREF|" "$G2B|$G2B|--br 32 --bc 32 --warps 8"
+                   "${G2B}_64x64|$G2B|--br 64 --bc 64 --warps 8" "$G3H|$G3H|--br 64 --bc 64 --warps 4"
+                   "$G3T|$G3T|--br 64 --bc 64 --warps 4"
+                   "${G2B}_tuned|$G2B|" "${G3H}_tuned|$G3H|" "${G3T}_tuned|$G3T|")
     local k=${#entries[@]}
     for ((round = 1; round <= GPU_ROUNDS; round++)); do
         for n in "${NS_GPU[@]}"; do
@@ -275,10 +308,182 @@ gpu_nsweep() {
     stop_gpu_sampler
 }
 
+# ------------------------------------------------------------- E7 autotune
+# The binary's validate() decides which cells exist; this only records its answer.
+e7_probe() {   # <stage id> <br> <bc> <w>  -> "" if runnable, else the reason
+    local out rc
+    out=$("build/$1" --n 64 --bh 1 --d 64 --iters 1 --reps 1 --warmup 0 --br "$2" --bc "$3" --warps "$4" \
+          --out /dev/null 2>&1) && rc=0 || rc=$?
+    if (( rc == 2 )) && grep -q ': error: ' <<<"$out"; then
+        grep -m1 ': error: ' <<<"$out" | sed -E 's/^[^:]*: error: //'
+    elif (( rc != 0 )); then
+        echo "PROBE FAILED (exit $rc)"
+    fi
+}
+
+gpu_autotune() {
+    echo "== E7 autotune (screen: ${PROTO_SCREEN[*]}; finals: ${PROTO[*]} x $GPU_ROUNDS rounds; seed $E7_SEED) =="
+    {   # tools/w04_e7_select.py tells screen and final rows apart by these
+        echo "e7 seed     : $E7_SEED"
+        echo "e7 screen   : ${PROTO_SCREEN[*]}"
+        echo "e7 final    : ${PROTO[*]}"
+        echo "e7 resources: $PROFILING_ROOT/$TS/e7_resources.csv"
+    } >> "$RUN/run_info.txt"
+    local e7="$RUN/e7" csv="$RUN/e7/W04_E7_AUTOTUNE.csv" cg="$PROFILING_ROOT/$TS"
+    mkdir -p "$e7" "$cg"
+    local stages=("$G2B" "$G3H" "$G3T")
+    local -a cells=()   # "stage br bc w" runnable
+    local -a skips=()   # "stage,br,bc,w,reason"
+    local st br bc w why
+    echo "stage_id,br,bc,warps,threads,smem_dynamic_B,regs,stack_B,local_B" > "$cg/e7_resources.csv"
+    for st in "${stages[@]}"; do
+        local res
+        res=$(python3 tools/w04_e7_select.py resources "build/$st")
+        for br in 16 32 64; do for bc in 16 32 64; do for w in 2 4 8; do
+            why=$(e7_probe "$st" "$br" "$bc" "$w")
+            if [[ -z "$why" ]]; then
+                cells+=("$st $br $bc $w")
+                local tile smem r
+                tile=$("build/$st" --n 64 --bh 1 --d 64 --iters 1 --reps 1 --warmup 0 --br "$br" --bc "$bc" \
+                       --warps "$w" --out /dev/null 2>&1 | grep -m1 '^tile    : ')
+                smem=$(sed -E 's/.*, ([0-9]+) B dynamic.*/\1/' <<<"$tile")
+                r=$(grep -m1 "^$br,$bc,$w," <<<"$res" | cut -d, -f4-)
+                echo "$st,$br,$bc,$w,$((32 * w)),$smem,$r" >> "$cg/e7_resources.csv"
+            elif [[ "$why" == "PROBE FAILED"* ]]; then
+                echo "  FAIL  probe $st Br=$br Bc=$bc W=$w: $why"; FAILS=$((FAILS + 1))
+            else
+                skips+=("$st,$br,$bc,$w,\"$why\"")
+            fi
+        done; done; done
+    done
+    echo "stage_id,n,br,bc,warps,reason" > "$e7/skipped.csv"
+    local n s
+    for n in "${NS_E7[@]}"; do
+        for s in "${skips[@]}"; do
+            IFS=, read -r st br bc w why <<<"$s"
+            echo "$st,$n,$br,$bc,$w,$why" >> "$e7/skipped.csv"
+        done
+    done
+    echo "  ${#cells[@]} runnable cells, ${#skips[@]} skipped per N (reasons: $e7/skipped.csv)"
+    cuobjdump --dump-resource-usage "${stages[@]/#/build/}" > "$cg/e7_resources.txt"
+
+    start_gpu_sampler
+    echo "-- screen --"
+    for n in "${NS_E7[@]}"; do
+        local -a order=()
+        mapfile -t order < <(printf '%s\n' "${cells[@]}" |
+            python3 -c "import random,sys; c=[l.rstrip() for l in sys.stdin]; random.Random($E7_SEED + $n).shuffle(c); print(*c, sep='\n')")
+        for c in "${order[@]}"; do
+            read -r st br bc w <<<"$c"
+            run "$csv" "e7/screen_n${n}_${st}_br${br}_bc${bc}_w$w" "$NTHREADS_ALL" "build/$st" \
+                --n "$n" "${SHAPE[@]}" "${PROTO_SCREEN[@]}" --br "$br" --bc "$bc" --warps "$w"
+        done
+    done
+    echo "-- finals --"
+    local -A fin=()
+    for n in "${NS_E7[@]}"; do
+        local -a list=()
+        for st in "${stages[@]}"; do
+            local picks
+            picks=$(python3 tools/w04_e7_select.py finalists "$RUN" "$n" "$st" --top 3) ||
+                { echo "  FAIL  finalists for $st at N=$n"; exit 1; }
+            while read -r br bc w; do list+=("$st $br $bc $w"); done <<<"$picks"
+        done
+        fin[$n]=$(printf '%s;' "${list[@]}")
+        echo "  N=$n finalists: ${#list[@]}"
+    done
+    local round
+    for ((round = 1; round <= GPU_ROUNDS; round++)); do
+        for n in "${NS_E7[@]}"; do
+            local -a list=()
+            IFS=';' read -r -a list <<<"${fin[$n]%;}"
+            local k=${#list[@]} i
+            for ((i = 0; i < k; i++)); do
+                read -r st br bc w <<<"${list[$(( (i + round - 1) % k ))]}"
+                run "$csv" "e7/final_n${n}_${st}_br${br}_bc${bc}_w${w}_r$round" "$NTHREADS_ALL" "build/$st" \
+                    --n "$n" "${SHAPE[@]}" "${PROTO[@]}" --br "$br" --bc "$bc" --warps "$w"
+            done
+        done
+    done
+    stop_gpu_sampler
+    echo "  report: python3 tools/w04_e7_select.py report $RUN"
+}
+
+# --------------------------------------------------------- GPU fast-math
+gpu_flags() {
+    echo "== GPU fast-math study (S2b) =="
+    make --no-print-directory w04-gpu-flagstudy >/dev/null
+    local acc="build/$G2B" fm="build/flagstudy/$G2B.fastmath" cg="$PROFILING_ROOT/$TS"
+    [[ -x "$fm" ]] || { echo "missing $fm"; exit 1; }
+    mkdir -p "$cg" "$RUN/logs/flags"
+    local -a builds=("accurate|$acc" "fastmath|$fm")
+    local b tag bin br bc w input n
+    echo "-- checks (every Br, Bc, W at n=203; default at n=128/256; both inputs) --"
+    for b in "${builds[@]}"; do
+        IFS='|' read -r tag bin <<<"$b"
+        for br in 16 32 64; do for bc in 16 32 64; do for w in 2 4 8; do for input in normal large_logits; do
+            run "$RUN/flags_check/$G2B.$tag.csv" "flags_check/$G2B.${tag}_br${br}_bc${bc}_w${w}_$input" \
+                "$NTHREADS_ALL" "$bin" --n 203 --bh 2 --d 64 --iters 1 --reps 1 --warmup 0 \
+                --br "$br" --bc "$bc" --warps "$w" --input "$input"
+        done; done; done; done
+        for n in 128 256; do for input in normal large_logits; do
+            run "$RUN/flags_check/$G2B.$tag.csv" "flags_check/$G2B.${tag}_default_n${n}_$input" \
+                "$NTHREADS_ALL" "$bin" --n "$n" --bh 2 --d 64 --iters 1 --reps 1 --warmup 0 --input "$input"
+        done; done
+    done
+    local -a cfgs=()
+    IFS=';' read -r -a cfgs <<<"$FM_CONFIGS"
+    echo "-- fast vs accurate O (n=1024, bh=2) --"
+    local c
+    for c in "${cfgs[@]}"; do
+        read -r br bc w <<<"$c"
+        for input in normal large_logits; do
+            for b in "${builds[@]}"; do
+                IFS='|' read -r tag bin <<<"$b"
+                W04_DUMP_O="$RUN/logs/flags/O_${tag}_br${br}_bc${bc}_w${w}_$input.bin" \
+                    run "$RUN/flags_check/$G2B.$tag.csv" "flags/dump_${tag}_br${br}_bc${bc}_w${w}_$input" \
+                    "$NTHREADS_ALL" "$bin" --n 1024 --bh 2 --d 64 --iters 1 --reps 1 --warmup 0 \
+                    --br "$br" --bc "$bc" --warps "$w" --input "$input"
+            done
+            local log="$RUN/logs/flags/compare_br${br}_bc${bc}_w${w}_$input.log"
+            python3 tools/w04_compare_o.py "$RUN/logs/flags/O_fastmath_br${br}_bc${bc}_w${w}_$input.bin" \
+                "$RUN/logs/flags/O_accurate_br${br}_bc${bc}_w${w}_$input.bin" --tol 1e-4 > "$log" 2>&1 || true
+            echo "  ${br}x${bc} W$w $input: $(grep -E '^compare' "$log" || echo 'compare failed')"
+        done
+    done
+    rm -f "$RUN"/logs/flags/O_*.bin   # raw dumps (MBs): only the comparison logs are kept
+    echo "-- speed ($GPU_ROUNDS interleaved rounds) --"
+    start_gpu_sampler
+    local -a entries=()
+    for c in "${cfgs[@]}"; do
+        read -r br bc w <<<"$c"
+        for b in "${builds[@]}"; do entries+=("$b|$br $bc $w"); done
+    done
+    local k=${#entries[@]} round i
+    for ((round = 1; round <= GPU_ROUNDS; round++)); do
+        for n in "${NS_FM[@]}"; do
+            for ((i = 0; i < k; i++)); do
+                IFS='|' read -r tag bin c <<<"${entries[$(( (i + round - 1) % k ))]}"
+                read -r br bc w <<<"$c"
+                run "$RUN/flags/$G2B.${tag}_${br}x${bc}w$w.csv" "flags/$G2B.${tag}_${br}x${bc}w${w}_n${n}_r$round" \
+                    "$NTHREADS_ALL" "$bin" --n "$n" "${SHAPE[@]}" "${PROTO[@]}" --br "$br" --bc "$bc" --warps "$w"
+            done
+        done
+    done
+    stop_gpu_sampler
+    local -a inst=()
+    for c in "${cfgs[@]}"; do read -r br bc w <<<"$c"; inst+=("${br}x${bc}w$w"); done
+    python3 tools/w04_fastmath_sass.py "$acc" "$fm" "${inst[@]}" > "$cg/s2b_fastmath_sass.txt"
+    echo "  SASS: $cg/s2b_fastmath_sass.txt"
+    echo "  speed: python3 tools/w04_summary.py $RUN flags"
+}
+
 # ------------------------------------------------------------------- main
 case "$CMD" in
     cpu-nsweep|cpu-tiles|cpu-threads|cpu-flags|cpu-all) NEED=("$S1" "$S2" "$S3") ;;
     gpu-nsweep) NEED=("$G1" "$G2A" "$GREF" "$G2B" "$G3H" "$G3T") ;;
+    gpu-autotune) NEED=("$G2B" "$G3H" "$G3T") ;;
+    gpu-flags) NEED=("$G2B") ;;
     *) usage ;;
 esac
 make --no-print-directory w04 >/dev/null
@@ -292,6 +497,8 @@ case "$CMD" in
     cpu-flags)   cpu_flags ;;
     cpu-all)     cpu_nsweep; cpu_tiles; cpu_threads; cpu_flags ;;
     gpu-nsweep)  gpu_nsweep ;;
+    gpu-autotune) gpu_autotune ;;
+    gpu-flags)   gpu_flags ;;
 esac
 echo "== done: $FAILS failed runs; results in $RUN =="
 (( FAILS == 0 ))

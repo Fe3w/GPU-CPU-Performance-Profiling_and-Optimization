@@ -5,6 +5,7 @@
 #   make w04          build the W04 self-tests and every W04 stage that exists
 #   make w04-test     build, then run tests/test_w04_correctness.sh
 #   make w04-flagstudy  P1 compiler-flag study binaries in build/flagstudy/
+#   make w04-gpu-flagstudy  P5 GPU fast-math binary (S2b + --use_fast_math) in build/flagstudy/
 #   make clean-w04    remove build/W04_* and build/flagstudy/ only
 #
 # Stages are found by wildcard, so a new src/{cpu,gpu}/W04_ATTENTION/<name>.{cpp,cu}
@@ -39,11 +40,11 @@ $(BUILD)/W04_ATTENTION_CPU_S1_BASE:          W04_CXXFLAGS := -O2 -std=c++17 -fop
 $(BUILD)/W04_ATTENTION_CPU_S3_HWACC_AVX2:    W04_CXXFLAGS += -mavx2 -mfma
 $(BUILD)/W04_ATTENTION_GPU_REF_CUBLAS:       W04_NVLDLIBS += -lcublas
 
-.PHONY: help w01 w02 w03 legacy w04 w04-test w04-flagstudy clean-w04 FORCE
+.PHONY: help w01 w02 w03 legacy w04 w04-test w04-flagstudy w04-gpu-flagstudy clean-w04 FORCE
 .DEFAULT_GOAL := help
 
 help:
-	@echo "targets: w01 | w02 | w03 | legacy | w04 | w04-test | w04-flagstudy | clean-w04"
+	@echo "targets: w01 | w02 | w03 | legacy | w04 | w04-test | w04-flagstudy | w04-gpu-flagstudy | clean-w04"
 	@echo "  W04 stages found: $(notdir $(W04_CPU_BINS) $(W04_GPU_BINS))"
 
 w04: $(W04_SELFTESTS) $(W04_CPU_BINS) $(W04_GPU_BINS)
@@ -122,6 +123,19 @@ $(foreach t,$(FS_TAGS),$(eval $(call FS_RULES,$(t))))
 
 $(FS_DIR)/W04_ATTENTION_SELFTEST.O3nf: tests/w04_selftest.cpp $(W04_HEADERS) | $(FS_DIR)
 	$(CXX) $(FS_FLAGS_O3nf) $(FS_BASE) $(INC) -DW04_COMPILER_FLAGS='"$(CXX) $(FS_FLAGS_O3nf) $(FS_BASE)"' $< -o $@ $(W04_LDLIBS)
+
+# ---- P5 GPU fast-math study (decision C31) ----------------------------------
+# The same S2b source with --use_fast_math added (device code only: expf ->
+# __expf, -ftz=true, -prec-div=false, -prec-sqrt=false). The accurate build is
+# the normal build/W04_ATTENTION_GPU_S2b_SWOPT_FUSED. The flags are compiled in
+# and land in the CSV compiler_flags column.
+GFS_S2B     := W04_ATTENTION_GPU_S2b_SWOPT_FUSED
+GFS_FLAGS   := $(W04_NVCCFLAGS) --use_fast_math
+
+w04-gpu-flagstudy: $(FS_DIR)/$(GFS_S2B).fastmath
+
+$(FS_DIR)/$(GFS_S2B).fastmath: src/gpu/W04_ATTENTION/$(GFS_S2B).cu $(W04_HEADERS) | $(FS_DIR)
+	$(NVCC) $(GFS_FLAGS) $(INC) -DW04_COMPILER_FLAGS='"$(NVCC) $(GFS_FLAGS)"' $< -o $@ $(W04_NVLDLIBS)
 
 # ---- W01–W03 (legacy workloads) ---------------------------------------------
 # One binary per stage source, build/<source name>. Each source writes its own

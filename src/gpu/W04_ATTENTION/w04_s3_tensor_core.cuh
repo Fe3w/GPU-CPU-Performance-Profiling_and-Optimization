@@ -12,15 +12,22 @@
 //             fragment rounded with __float_to_tf32 (round to nearest, the
 //             same rounding as the host reference, decision C25)
 //
-// Warp layout (FlashAttention-2 split of Q): Br/16 warps per block; warp w
-// owns query rows 16w … 16w+15 of the block for the whole kernel, so the
-// softmax of a row never leaves its warp and the steps between Q·Kᵀ and P̃·V
-// need only __syncwarp().
+// Warp layout (FlashAttention-2 split of Q): W warps per block (P5, decision
+// C27: W divides Br/16, so W ≤ Br/16). Warp w owns SPW = Br/(16W) strips of 16
+// query rows, rows 16·(w·SPW + t) … +15 for t < SPW, for the whole kernel, so
+// the softmax of a row never leaves its warp and the steps between Q·Kᵀ and
+// P̃·V need only __syncwarp(). With W = Br/16 (SPW = 1) this is the P4 kernel
+// unchanged. With SPW > 1 the warp runs the per-tile steps below once per
+// strip, reusing one Sw/Pw strip; Q fragments, m, l and O are kept in
+// registers for every strip (more registers, less shared memory per row).
+// W > Br/16 would need warps to split Bc as well (a cross-warp max and sum),
+// which this kernel does not do.
 //
 //   prologue : Q_i staged through shared memory into register fragments
-//              (d/WK matrix_a fragments per warp), kept for the whole loop
+//              (SPW·d/WK matrix_a fragments per warp), kept for the whole loop
 //   per K/V tile j:
 //     load K_j, V_j                                           __syncthreads (A)
+//     for each strip of the warp:
 //     S strip (16×Bc) = Q_w·K_jᵀ   Bc/16 accumulators, K as col_major matrix_b
 //     store S strip -> Sw (FP32, shared)                       __syncwarp
 //     online softmax in FP32: lane -> row lane%16, half lane/16 (Bc/2 columns,
@@ -30,7 +37,7 @@
 //     store PV -> Sw (scratch)                                 __syncwarp
 //     O = α·O + PV, per lane in registers (32 floats: row lane%16, columns
 //       32·(lane/16) …), so O never depends on the WMMA accumulator layout,
-//       which is not specified
+//       which is not specified                       (SPW > 1: __syncwarp)
 //                                                              __syncthreads (B)
 //   epilogue : O / l -> global memory (the only write)
 //
@@ -48,7 +55,9 @@
 //   * l is summed from the FP32 p, while P̃·V uses the rounded p (FP16/TF32)
 //   * accurate expf (no fast-math), as in S2b
 //   * d ≤ 64 and d % 8 == 0 (16-byte vector loads); shorter d zero-padded to 64
-//   * Br, Bc ∈ {16, 32, 64} (compile-time instantiations)
+//   * Br, Bc ∈ {16, 32, 64} with (Br, W) ∈ {(16, 1), (32, 2), (64, 4)} (the
+//     P4 tiles, one strip per warp) and (64, 2) (two strips per warp): 12
+//     compile-time instantiations per precision
 // -----------------------------------------------------------------------------
 #pragma once
 
@@ -97,11 +106,13 @@ struct PrecTF32 {
     }
 };
 
-template <class P, int Br, int Bc>
+template <class P, int Br, int Bc, int W>
 struct Layout {
     static_assert(Br % 16 == 0 && Bc % 16 == 0, "Br and Bc must be multiples of 16");
+    static_assert(W >= 1 && (Br / 16) % W == 0, "W must divide Br/16 (one or more 16-row strips per warp)");
     using elem = typename P::elem;
-    static constexpr int kWarps = Br / 16;
+    static constexpr int kWarps = W;
+    static constexpr int kStrips = Br / (16 * W);  // 16-row strips per warp (SPW)
     static constexpr int kThreads = 32 * kWarps;
     static constexpr int kKVld = kDmax + P::kPad;  // row stride of K, V (and staged Q), in elements
     static constexpr int kPld = Bc + 8;            // row stride of the half P̃ strip
@@ -130,11 +141,12 @@ __device__ __forceinline__ void load_rows(elem* dst, const elem* __restrict__ sr
     }
 }
 
-template <class P, int Br, int Bc>
-__global__ void __launch_bounds__(Layout<P, Br, Bc>::kThreads)
+template <class P, int Br, int Bc, int W>
+__global__ void __launch_bounds__(Layout<P, Br, Bc, W>::kThreads)
 flash_fwd_tc(const typename P::elem* __restrict__ Q, const typename P::elem* __restrict__ K,
              const typename P::elem* __restrict__ V, float* __restrict__ O, int N, int d, float scale) {
-    using L = Layout<P, Br, Bc>;
+    using L = Layout<P, Br, Bc, W>;
+    constexpr int SPW = L::kStrips;
     using elem = typename P::elem;
     using frag_t = typename P::frag_t;
     constexpr int WK = P::WK, kKVld = L::kKVld, kPld = L::kPld;
@@ -154,142 +166,155 @@ flash_fwd_tc(const typename P::elem* __restrict__ Q, const typename P::elem* __r
     float* Sw = Sall + warp * 16 * kSld;
     __half* Pw = Pall + warp * 16 * kPld;
 
-    // Q_i -> registers (one 16×64 strip per warp), staged through shared memory.
+    // Q_i -> registers (SPW 16×64 strips per warp), staged through shared memory.
     load_rows<elem, Br, kKVld>(Qstage, Q + head, i0, N, d, tid, L::kThreads);
     __syncthreads();
-    wmma::fragment<wmma::matrix_a, 16, 16, WK, frag_t, wmma::row_major> qf[kDmax / WK];
+    wmma::fragment<wmma::matrix_a, 16, 16, WK, frag_t, wmma::row_major> qf[SPW][kDmax / WK];
 #pragma unroll
-    for (int k = 0; k < kDmax / WK; ++k) {
-        wmma::load_matrix_sync(qf[k], Qstage + warp * 16 * kKVld + k * WK, kKVld);
-        P::round(qf[k]);
-    }
+    for (int st = 0; st < SPW; ++st)
+#pragma unroll
+        for (int k = 0; k < kDmax / WK; ++k) {
+            wmma::load_matrix_sync(qf[st][k], Qstage + (warp * SPW + st) * 16 * kKVld + k * WK, kKVld);
+            P::round(qf[st][k]);
+        }
     __syncthreads();  // staging area free for K/V
 
-    float m = -FLT_MAX, l = 0.0f;
-    float o[32];
+    float m[SPW], l[SPW];
+    float o[SPW][32];
 #pragma unroll
-    for (int q = 0; q < 32; ++q) o[q] = 0.0f;
+    for (int st = 0; st < SPW; ++st) {
+        m[st] = -FLT_MAX;
+        l[st] = 0.0f;
+#pragma unroll
+        for (int q = 0; q < 32; ++q) o[st][q] = 0.0f;
+    }
 
     for (int j0 = 0; j0 < N; j0 += Bc) {
         load_rows<elem, Bc, kKVld>(Ks, K + head, j0, N, d, tid, L::kThreads);
         load_rows<elem, Bc, kKVld>(Vs, V + head, j0, N, d, tid, L::kThreads);
         __syncthreads();  // (A) K_j, V_j visible
-
-        // S strip = Q_w·K_jᵀ (K row-major in shared memory = Kᵀ column-major).
-        {
-            wmma::fragment<wmma::accumulator, 16, 16, WK, float> acc[Bc / 16];
 #pragma unroll
-            for (int n = 0; n < Bc / 16; ++n) wmma::fill_fragment(acc[n], 0.0f);
+        for (int st = 0; st < SPW; ++st) {  // the warp's strips, one after another
+            // S strip = Q_w·K_jᵀ (K row-major in shared memory = Kᵀ column-major).
+            {
+                wmma::fragment<wmma::accumulator, 16, 16, WK, float> acc[Bc / 16];
 #pragma unroll
-            for (int k = 0; k < kDmax / WK; ++k) {
+                for (int n = 0; n < Bc / 16; ++n) wmma::fill_fragment(acc[n], 0.0f);
 #pragma unroll
-                for (int n = 0; n < Bc / 16; ++n) {
-                    wmma::fragment<wmma::matrix_b, 16, 16, WK, frag_t, wmma::col_major> kf;
-                    wmma::load_matrix_sync(kf, Ks + n * 16 * kKVld + k * WK, kKVld);
-                    P::round(kf);
-                    wmma::mma_sync(acc[n], qf[k], kf, acc[n]);
+                for (int k = 0; k < kDmax / WK; ++k) {
+#pragma unroll
+                    for (int n = 0; n < Bc / 16; ++n) {
+                        wmma::fragment<wmma::matrix_b, 16, 16, WK, frag_t, wmma::col_major> kf;
+                        wmma::load_matrix_sync(kf, Ks + n * 16 * kKVld + k * WK, kKVld);
+                        P::round(kf);
+                        wmma::mma_sync(acc[n], qf[st][k], kf, acc[n]);
+                    }
                 }
-            }
 #pragma unroll
-            for (int n = 0; n < Bc / 16; ++n)
-                wmma::store_matrix_sync(Sw + n * 16, acc[n], kSld, wmma::mem_row_major);
-        }
-        __syncwarp();
-
-        // Online softmax in FP32 on this lane's half row.
-        float s[kHalfCols];
-        {
-            const float* srow = Sw + r * kSld + hsel * kHalfCols;
-#pragma unroll
-            for (int q = 0; q < kHalfCols; q += 4) {
-                const float4 v = *reinterpret_cast<const float4*>(srow + q);
-                s[q] = v.x; s[q + 1] = v.y; s[q + 2] = v.z; s[q + 3] = v.w;
-            }
-        }
-        const int jbase = j0 + hsel * kHalfCols;
-        float mt = -FLT_MAX;
-#pragma unroll
-        for (int q = 0; q < kHalfCols; ++q) {
-            s[q] *= scale;
-            if (jbase + q < N) mt = fmaxf(mt, s[q]);
-        }
-        mt = fmaxf(mt, __shfl_xor_sync(kFull, mt, 16));
-        const float m_new = fmaxf(m, mt);
-        float rs = 0.0f;
-#pragma unroll
-        for (int q = 0; q < kHalfCols; ++q) {
-            const float p = (jbase + q < N) ? expf(s[q] - m_new) : 0.0f;
-            s[q] = p;
-            rs += p;
-        }
-        rs += __shfl_xor_sync(kFull, rs, 16);
-        const float alpha = expf(m - m_new);  // 0 on the first tile (m = −FLT_MAX)
-        l = alpha * l + rs;
-        m = m_new;
-        if constexpr (P::kSeparateP) {
-            __half* prow = Pw + r * kPld + hsel * kHalfCols;
-#pragma unroll
-            for (int q = 0; q < kHalfCols; q += 2)
-                *reinterpret_cast<__half2*>(prow + q) = __floats2half2_rn(s[q], s[q + 1]);
-        } else {
-            float* prow = Sw + r * kSld + hsel * kHalfCols;
-#pragma unroll
-            for (int q = 0; q < kHalfCols; q += 4)
-                *reinterpret_cast<float4*>(prow + q) = make_float4(s[q], s[q + 1], s[q + 2], s[q + 3]);
-        }
-        __syncwarp();
-
-        // PV (16×64) = P̃_w·V_j; all P̃ loads finish before the result reuses Sw.
-        {
-            wmma::fragment<wmma::accumulator, 16, 16, WK, float> acc[kDmax / 16];
-#pragma unroll
-            for (int t = 0; t < kDmax / 16; ++t) wmma::fill_fragment(acc[t], 0.0f);
-#pragma unroll
-            for (int k = 0; k < Bc; k += WK) {
-                wmma::fragment<wmma::matrix_a, 16, 16, WK, frag_t, wmma::row_major> pf;
-                if constexpr (P::kSeparateP)
-                    wmma::load_matrix_sync(pf, Pw + k, kPld);
-                else
-                    wmma::load_matrix_sync(pf, Sw + k, kSld);
-                P::round(pf);
-#pragma unroll
-                for (int t = 0; t < kDmax / 16; ++t) {
-                    wmma::fragment<wmma::matrix_b, 16, 16, WK, frag_t, wmma::row_major> vf;
-                    wmma::load_matrix_sync(vf, Vs + k * kKVld + t * 16, kKVld);
-                    P::round(vf);
-                    wmma::mma_sync(acc[t], pf, vf, acc[t]);
-                }
+                for (int n = 0; n < Bc / 16; ++n)
+                    wmma::store_matrix_sync(Sw + n * 16, acc[n], kSld, wmma::mem_row_major);
             }
             __syncwarp();
-#pragma unroll
-            for (int t = 0; t < kDmax / 16; ++t)
-                wmma::store_matrix_sync(Sw + t * 16, acc[t], kSld, wmma::mem_row_major);
-        }
-        __syncwarp();
 
-        // O = α·O + PV for this lane's 32 values.
-        {
-            const float* prow = Sw + r * kSld + hsel * 32;
+            // Online softmax in FP32 on this lane's half row.
+            float s[kHalfCols];
+            {
+                const float* srow = Sw + r * kSld + hsel * kHalfCols;
 #pragma unroll
-            for (int q = 0; q < 32; q += 4) {
-                const float4 v = *reinterpret_cast<const float4*>(prow + q);
-                o[q] = alpha * o[q] + v.x;
-                o[q + 1] = alpha * o[q + 1] + v.y;
-                o[q + 2] = alpha * o[q + 2] + v.z;
-                o[q + 3] = alpha * o[q + 3] + v.w;
+                for (int q = 0; q < kHalfCols; q += 4) {
+                    const float4 v = *reinterpret_cast<const float4*>(srow + q);
+                    s[q] = v.x; s[q + 1] = v.y; s[q + 2] = v.z; s[q + 3] = v.w;
+                }
             }
+            const int jbase = j0 + hsel * kHalfCols;
+            float mt = -FLT_MAX;
+#pragma unroll
+            for (int q = 0; q < kHalfCols; ++q) {
+                s[q] *= scale;
+                if (jbase + q < N) mt = fmaxf(mt, s[q]);
+            }
+            mt = fmaxf(mt, __shfl_xor_sync(kFull, mt, 16));
+            const float m_new = fmaxf(m[st], mt);
+            float rs = 0.0f;
+#pragma unroll
+            for (int q = 0; q < kHalfCols; ++q) {
+                const float p = (jbase + q < N) ? expf(s[q] - m_new) : 0.0f;
+                s[q] = p;
+                rs += p;
+            }
+            rs += __shfl_xor_sync(kFull, rs, 16);
+            const float alpha = expf(m[st] - m_new);  // 0 on the first tile (m = −FLT_MAX)
+            l[st] = alpha * l[st] + rs;
+            m[st] = m_new;
+            if constexpr (P::kSeparateP) {
+                __half* prow = Pw + r * kPld + hsel * kHalfCols;
+#pragma unroll
+                for (int q = 0; q < kHalfCols; q += 2)
+                    *reinterpret_cast<__half2*>(prow + q) = __floats2half2_rn(s[q], s[q + 1]);
+            } else {
+                float* prow = Sw + r * kSld + hsel * kHalfCols;
+#pragma unroll
+                for (int q = 0; q < kHalfCols; q += 4)
+                    *reinterpret_cast<float4*>(prow + q) = make_float4(s[q], s[q + 1], s[q + 2], s[q + 3]);
+            }
+            __syncwarp();
+
+            // PV (16×64) = P̃_w·V_j; all P̃ loads finish before the result reuses Sw.
+            {
+                wmma::fragment<wmma::accumulator, 16, 16, WK, float> acc[kDmax / 16];
+#pragma unroll
+                for (int t = 0; t < kDmax / 16; ++t) wmma::fill_fragment(acc[t], 0.0f);
+#pragma unroll
+                for (int k = 0; k < Bc; k += WK) {
+                    wmma::fragment<wmma::matrix_a, 16, 16, WK, frag_t, wmma::row_major> pf;
+                    if constexpr (P::kSeparateP)
+                        wmma::load_matrix_sync(pf, Pw + k, kPld);
+                    else
+                        wmma::load_matrix_sync(pf, Sw + k, kSld);
+                    P::round(pf);
+#pragma unroll
+                    for (int t = 0; t < kDmax / 16; ++t) {
+                        wmma::fragment<wmma::matrix_b, 16, 16, WK, frag_t, wmma::row_major> vf;
+                        wmma::load_matrix_sync(vf, Vs + k * kKVld + t * 16, kKVld);
+                        P::round(vf);
+                        wmma::mma_sync(acc[t], pf, vf, acc[t]);
+                    }
+                }
+                __syncwarp();
+#pragma unroll
+                for (int t = 0; t < kDmax / 16; ++t)
+                    wmma::store_matrix_sync(Sw + t * 16, acc[t], kSld, wmma::mem_row_major);
+            }
+            __syncwarp();
+
+            // O = α·O + PV for this lane's 32 values.
+            {
+                const float* prow = Sw + r * kSld + hsel * 32;
+#pragma unroll
+                for (int q = 0; q < 32; q += 4) {
+                    const float4 v = *reinterpret_cast<const float4*>(prow + q);
+                    o[st][q] = alpha * o[st][q] + v.x;
+                    o[st][q + 1] = alpha * o[st][q + 1] + v.y;
+                    o[st][q + 2] = alpha * o[st][q + 2] + v.z;
+                    o[st][q + 3] = alpha * o[st][q + 3] + v.w;
+                }
+            }
+            if constexpr (SPW > 1) __syncwarp();  // O update read Sw before the next strip writes it
         }
         __syncthreads();  // (B) K_j, V_j and Sw free for the next tile
     }
 
     // O_i = O_i / l_i (the only global write).
-    const int i = i0 + warp * 16 + r;
-    if (i < N) {
-        float* Orow = O + head + static_cast<std::size_t>(i) * d;
 #pragma unroll
-        for (int q = 0; q < 32; ++q) {
-            const int c = hsel * 32 + q;
-            if (c < d) Orow[c] = o[q] / l;
+    for (int st = 0; st < SPW; ++st) {
+        const int i = i0 + (warp * SPW + st) * 16 + r;
+        if (i < N) {
+            float* Orow = O + head + static_cast<std::size_t>(i) * d;
+#pragma unroll
+            for (int q = 0; q < 32; ++q) {
+                const int c = hsel * 32 + q;
+                if (c < d) Orow[c] = o[st][q] / l[st];
+            }
         }
     }
 }
@@ -319,41 +344,61 @@ template <class P>
 struct Instance {
     using Fn = void (*)(const typename P::elem*, const typename P::elem*, const typename P::elem*, float*, int,
                         int, float);
-    int br, bc;
+    int br, bc, warps;
     Fn fn;
     std::size_t smem;
     int threads;
 };
 
-template <class P, int Br, int Bc>
+template <class P, int Br, int Bc, int W>
 constexpr Instance<P> make_instance() {
-    return Instance<P>{Br, Bc, &flash_fwd_tc<P, Br, Bc>, Layout<P, Br, Bc>::bytes, Layout<P, Br, Bc>::kThreads};
+    using L = Layout<P, Br, Bc, W>;
+    return Instance<P>{Br, Bc, W, &flash_fwd_tc<P, Br, Bc, W>, L::bytes, L::kThreads};
 }
 
+// The P4 tiles (W = Br/16) plus Br = 64 with 2 warps (two strips per warp).
 template <class P>
-const Instance<P>* find_instance(int br, int bc) {
+const Instance<P>* find_instance(int br, int bc, int warps) {
     static constexpr Instance<P> kInstances[] = {
-        make_instance<P, 16, 16>(), make_instance<P, 16, 32>(), make_instance<P, 16, 64>(),
-        make_instance<P, 32, 16>(), make_instance<P, 32, 32>(), make_instance<P, 32, 64>(),
-        make_instance<P, 64, 16>(), make_instance<P, 64, 32>(), make_instance<P, 64, 64>(),
+        make_instance<P, 16, 16, 1>(), make_instance<P, 16, 32, 1>(), make_instance<P, 16, 64, 1>(),
+        make_instance<P, 32, 16, 2>(), make_instance<P, 32, 32, 2>(), make_instance<P, 32, 64, 2>(),
+        make_instance<P, 64, 16, 4>(), make_instance<P, 64, 32, 4>(), make_instance<P, 64, 64, 4>(),
+        make_instance<P, 64, 16, 2>(), make_instance<P, 64, 32, 2>(), make_instance<P, 64, 64, 2>(),
     };
     for (const Instance<P>& in : kInstances)
-        if (in.br == br && in.bc == bc) return &in;
+        if (in.br == br && in.bc == bc && in.warps == warps) return &in;
     return nullptr;
+}
+
+// Why a (Br, Bc, W) cannot run; "" if it can. The sweep records this text for
+// skipped configurations.
+template <class P>
+std::string unsupported_reason(int br, int bc, int warps) {
+    auto in_set = [](int v) { return v == 16 || v == 32 || v == 64; };
+    if (!in_set(br) || !in_set(bc))
+        return "Br=" + std::to_string(br) + " Bc=" + std::to_string(bc) +
+               " is not instantiated (Br, Bc in {16, 32, 64})";
+    if (warps <= 0 || warps > br / 16)
+        return "warps=" + std::to_string(warps) + " > Br/16=" + std::to_string(br / 16) +
+               ": the FA2 split needs at least 16 query rows per warp";
+    if ((br / 16) % warps != 0)
+        return "warps=" + std::to_string(warps) + " does not divide Br/16=" + std::to_string(br / 16);
+    const Instance<P>* in = find_instance<P>(br, bc, warps);
+    if (in == nullptr) return "warps=" + std::to_string(warps) + " is not instantiated for Br=" + std::to_string(br);
+    cudaDeviceProp prop{};
+    W04_CUDA_CHECK(cudaGetDeviceProperties(&prop, 0));
+    if (in->smem > prop.sharedMemPerBlockOptin)
+        return "shared memory " + std::to_string(in->smem) + " B exceeds the opt-in limit " +
+               std::to_string(prop.sharedMemPerBlockOptin) + " B";
+    return "";
 }
 
 // TF32 stage; the FP16 stage below adds the half buffers and the prepare step.
 template <class P>
 class StageS3 {
 public:
-    StageS3(const w04::AttnShape&, const w04::BenchArgs& a) : inst_(find_instance<P>(a.br, a.bc)) {
-        cudaDeviceProp prop{};
-        W04_CUDA_CHECK(cudaGetDeviceProperties(&prop, 0));
-        if (inst_->smem > prop.sharedMemPerBlockOptin) {
-            std::fprintf(stderr, "S3: Br=%d Bc=%d needs %zu B shared memory, opt-in limit is %zu B\n", inst_->br,
-                         inst_->bc, inst_->smem, static_cast<std::size_t>(prop.sharedMemPerBlockOptin));
-            std::exit(2);
-        }
+    // The shared-memory limit was checked by validate (unsupported_reason).
+    StageS3(const w04::AttnShape&, const w04::BenchArgs& a) : inst_(find_instance<P>(a.br, a.bc, a.warps)) {
         W04_CUDA_CHECK(cudaFuncSetAttribute(inst_->fn, cudaFuncAttributeMaxDynamicSharedMemorySize,
                                             static_cast<int>(inst_->smem)));
         std::printf("tile    : Br=%d Bc=%d, %d threads (%d warps), %zu B dynamic shared memory per block\n",
@@ -423,16 +468,13 @@ template <class Stage, class P>
 int run_s3(int argc, char** argv, const char* stage_id, const char* variant, w04::Precision prec) {
     w04::GpuStageSpec spec;
     spec.meta = {stage_id, "S3_HWACC", variant, "GPU", prec};
-    spec.tunable = true;
-    spec.default_br = 64;  // decision C24 (same tile as the S2b 64×64 variant; E7 retunes)
-    spec.default_bc = 64;
+    spec.tunable = true;  // defaults: w04_tuned.hpp (decision C29)
+    spec.tunable_warps = true;
+    spec.native_warps = [](int br) { return br / 16; };  // the P4 mapping, one strip per warp
     spec.validate = [](const w04::BenchArgs& a) -> std::string {
         if (a.d > kDmax || a.d % 8 != 0)
             return "d=" + std::to_string(a.d) + " is not supported (d <= 64 and d % 8 == 0)";
-        if (!find_instance<P>(a.br, a.bc))
-            return "Br=" + std::to_string(a.br) + " Bc=" + std::to_string(a.bc) +
-                   " is not instantiated (Br, Bc in {16, 32, 64})";
-        return "";
+        return unsupported_reason<P>(a.br, a.bc, a.warps);
     };
     return w04::run_gpu_stage<Stage>(argc, argv, spec);
 }

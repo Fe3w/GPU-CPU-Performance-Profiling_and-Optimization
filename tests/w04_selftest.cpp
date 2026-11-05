@@ -26,6 +26,7 @@
 #include "bench_cli.hpp"
 #include "bench_timing.hpp"
 #include "w04_csv.hpp"
+#include "w04_tuned.hpp"
 
 using namespace w04;
 
@@ -300,7 +301,7 @@ static void test_controls() {
 
 static void test_cli() {
     std::printf("[CLI]\n");
-    const CliSpec fixed{"W04_TEST", false}, tunable{"W04_TEST", true};
+    const CliSpec fixed{"W04_TEST", false}, tunable{"W04_TEST", true}, warped{"W04_TEST", true, true};
     auto parse = [](const CliSpec& sp, std::vector<const char*> v) {
         v.insert(v.begin(), "prog");
         return try_parse_bench_args(static_cast<int>(v.size()), v.data(), sp);
@@ -309,7 +310,7 @@ static void test_cli() {
         const CliResult r = parse(fixed, {});
         CHECK(r.ok && r.args.n == 1024 && r.args.bh == 8 && r.args.d == 64 && r.args.iters == 20 &&
                   r.args.reps == 5 && r.args.warmup == 2 && r.args.seed == 42 && r.args.out.empty() &&
-                  r.args.input == InputCase::Normal,
+                  r.args.input == InputCase::Normal && r.args.br == 0 && r.args.bc == 0 && r.args.warps == 0,
               "defaults must match the plan");
     }
     {
@@ -330,6 +331,18 @@ static void test_cli() {
         CHECK(!r.ok && !r.error.empty(), "must reject: %s %s", v[0], v.size() > 1 ? v[1] : "");
     }
     CHECK(!parse(tunable, {"--bc", "0"}).ok, "--bc 0 must be rejected");
+    // --warps (P5, C28): only on binaries with a warps axis.
+    {
+        const CliResult r = parse(warped, {"--br", "64", "--warps", "4"});
+        CHECK(r.ok && r.args.br == 64 && r.args.warps == 4, "--warps on a warps-axis binary: %s", r.error.c_str());
+        const CliResult r2 = parse(warped, {"--warps=2"});
+        CHECK(r2.ok && r2.args.warps == 2, "--warps=2 form");
+        CHECK(args_to_string(r.args).find("warps=4") != std::string::npos, "args_to_string shows warps");
+    }
+    CHECK(!parse(tunable, {"--warps", "4"}).ok, "--warps must be rejected without a warps axis");
+    CHECK(!parse(fixed, {"--warps", "4"}).ok, "--warps must be rejected on a fixed binary");
+    CHECK(!parse(warped, {"--warps", "0"}).ok && !parse(warped, {"--warps", "x"}).ok && !parse(warped, {"--warps"}).ok,
+          "--warps 0 / non-numeric / missing value must be rejected");
 }
 
 // Minimal RFC-4180 split (quoted fields, doubled quotes) for checking our own output.
@@ -396,8 +409,9 @@ static void test_csv(const std::string& dir) {
         CHECK(lines[2].find("W04_ATTENTION,S0_TEST,") == 0, "row content");
     }
     const std::vector<std::string> header = split_csv(w04_csv_header());
-    CHECK(header.size() == 29, "schema has %zu columns, expected 22 (plan) + 5 (P0) + 2 (P4)", header.size());
-    CHECK(col(header, "prep_ms") == 27 && col(header, "max_rel_err_main") == 28, "P4 columns at the end");
+    CHECK(header.size() == 30, "schema has %zu columns, expected 22 (plan) + 5 (P0) + 2 (P4) + 1 (P5)", header.size());
+    CHECK(col(header, "prep_ms") == 27 && col(header, "max_rel_err_main") == 28, "P4 columns after the P0 ones");
+    CHECK(col(header, "warps") == 29, "P5 column warps at the end");
     CHECK(col(header, "timestamp") == 20 && col(header, "git_sha") == 21 && col(header, "compiler_flags") == 19,
           "timestamp/git_sha/compiler_flags column positions");
     if (lines.size() == 3) {
@@ -445,8 +459,8 @@ static void test_csv(const std::string& dir) {
         bool ok = rows.size() == 3;
         for (std::size_t r = 0; ok && r < rows.size(); ++r) {
             const auto& f = rows[r];
-            ok &= f.size() == 29 && fld(f, header, "rep") == std::to_string(r + 1) &&
-                  fld(f, header, "prep_ms").empty() &&
+            ok &= f.size() == 30 && fld(f, header, "rep") == std::to_string(r + 1) &&
+                  fld(f, header, "prep_ms").empty() && fld(f, header, "warps") == "0" &&
                   std::stod(fld(f, header, "max_rel_err_main")) == std::stod(csv_num(chk.main.max_rel_err)) &&
                   fld(f, header, "stage") == "S0_TEST" && fld(f, header, "device") == "CPU" &&
                   fld(f, header, "precision") == "FP32" && fld(f, header, "n") == "64" &&
@@ -466,15 +480,16 @@ static void test_csv(const std::string& dir) {
         // With a preparation step: prep_ms carries one value per rep; a size mismatch is refused.
         const std::vector<double> prep = {0.25, 0.5, 0.75};
         a.out = dir + "/nested/report_prep.csv";
-        const int rc2 = report_and_write(meta, a, {1.0, 1.5, 2.0}, chk, 12345, 7, 32, 64, &prep);
+        const int rc2 = report_and_write(meta, a, {1.0, 1.5, 2.0}, chk, 12345, 7, 32, 64, &prep, 4);
         std::ifstream pin(a.out);
         std::vector<std::vector<std::string>> prow;
         std::getline(pin, l);
         while (std::getline(pin, l)) prow.push_back(split_csv(l));
         bool pok = rc2 == 0 && prow.size() == 3;
         for (std::size_t r = 0; pok && r < prow.size(); ++r)
-            pok &= prow[r].size() == 29 && std::stod(fld(prow[r], header, "prep_ms")) == prep[r];
-        CHECK(pok, "report: prep_ms per rep");
+            pok &= prow[r].size() == 30 && std::stod(fld(prow[r], header, "prep_ms")) == prep[r] &&
+                   fld(prow[r], header, "warps") == "4";
+        CHECK(pok, "report: prep_ms and warps per rep");
         bool threw3 = false;
         const std::vector<double> short_prep = {0.25};
         try {
@@ -514,6 +529,27 @@ static void test_timing() {
     CHECK(cpu_peak_rss_bytes() > 0, "peak RSS");
 }
 
+// Tuned-defaults table (P5, C29): nearest tuned N, ties to the smaller N.
+static void test_tuned() {
+    std::printf("[tuned defaults]\n");
+    const char* ids[] = {"W04_ATTENTION_GPU_S2b_SWOPT_FUSED", "W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16",
+                         "W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32"};
+    for (const char* id : ids) {
+        const TunedConfig* lo = tuned_config(id, 128);
+        const TunedConfig* mid = tuned_config(id, 3072);
+        const TunedConfig* hi = tuned_config(id, 3073);
+        const TunedConfig* big = tuned_config(id, 8192);
+        CHECK(lo && mid && hi && big, "%s: every stage has entries", id);
+        if (lo && mid && hi && big)
+            CHECK(lo->n == 2048 && mid->n == 2048 && hi->n == 4096 && big->n == 4096,
+                  "%s: n<=3072 -> 2048 entry, above -> 4096 (got %zu %zu %zu %zu)", id, lo->n, mid->n, hi->n,
+                  big->n);
+    }
+    CHECK(tuned_config("W04_NO_SUCH_STAGE", 1024) == nullptr, "unknown stage has no entry");
+    for (const TunedConfig& c : kTunedConfigs)
+        CHECK(c.br > 0 && c.bc > 0 && c.warps > 0 && c.n > 0, "%s N=%zu: positive fields", c.stage_id, c.n);
+}
+
 int main(int argc, char** argv) {
     const std::string dir = argc > 1 ? argv[1] : "build/test_out/selftest";
     std::printf("W04_ATTENTION_SELFTEST  git=%s\nflags: %s\n", W04_GIT_SHA, W04_COMPILER_FLAGS);
@@ -523,6 +559,7 @@ int main(int argc, char** argv) {
     test_rows();
     test_metrics();
     test_cli();
+    test_tuned();
     test_csv(dir);
     test_timing();
     test_controls();

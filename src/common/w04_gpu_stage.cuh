@@ -1,7 +1,7 @@
 // -----------------------------------------------------------------------------
 // W04 ATTENTION — shared main() flow for the GPU stages (P2)
 //
-//   parse CLI -> resolve Br/Bc -> stage validation -> device buffers + stage
+//   parse CLI -> resolve Br/Bc/warps (w04_tuned.hpp) -> stage validation -> device buffers + stage
 //   -> upload inputs -> timed protocol (CUDA events, cuda_utils.cuh)
 //   -> peak device memory -> per-kernel breakdown (separate pass)
 //   -> check_stage (double reference, V=ones row-sum) -> report_and_write
@@ -32,6 +32,9 @@
 //     correctness run (the requested input, not the V=ones run) is written there
 //     as raw float32 [BH][N][d], for direct stage-vs-stage comparisons
 //     (tools/w04_compare_o.py). The CLI is unchanged.
+//   * Tunable stages take their default Br, Bc (and warps) from the table in
+//     w04_tuned.hpp (P5, decision C29); the "config  :" line says where each
+//     value came from. A tunable stage without a table entry is an error.
 // -----------------------------------------------------------------------------
 #pragma once
 
@@ -51,6 +54,7 @@
 #include "bench_cli.hpp"
 #include "cuda_utils.cuh"
 #include "w04_csv.hpp"
+#include "w04_tuned.hpp"
 
 namespace w04 {
 
@@ -66,9 +70,9 @@ struct DeviceAttn {
 
 struct GpuStageSpec {
     StageMeta meta;
-    bool tunable = false;
-    int default_br = 0;
-    int default_bc = 0;
+    bool tunable = false;        // --br/--bc; defaults from w04_tuned.hpp
+    bool tunable_warps = false;  // --warps (P5, C28); needs native_warps
+    std::function<int(int br)> native_warps;                 // warps of a tile given by --br/--bc
     std::function<std::string(const BenchArgs&)> validate;  // "" if supported, else the reason
 };
 
@@ -129,10 +133,29 @@ inline void dump_output(const std::vector<float>& O) {
 
 template <class Stage>
 int run_gpu_stage(int argc, char** argv, const GpuStageSpec& spec) {
-    BenchArgs a = parse_bench_args(argc, argv, CliSpec{spec.meta.stage_id, spec.tunable});
+    BenchArgs a = parse_bench_args(argc, argv, CliSpec{spec.meta.stage_id, spec.tunable, spec.tunable_warps});
+    std::string config_line;
     if (spec.tunable) {
-        if (a.br == 0) a.br = spec.default_br;
-        if (a.bc == 0) a.bc = spec.default_bc;
+        const TunedConfig* t = tuned_config(spec.meta.stage_id, a.n);
+        if (t == nullptr) {
+            std::fprintf(stderr, "%s: error: no entry in w04_tuned.hpp\n", spec.meta.stage_id);
+            return 2;
+        }
+        const std::string entry = "tuned N=" + std::to_string(t->n);
+        const bool tile_given = a.br != 0 || a.bc != 0;
+        const std::string br_src = a.br ? "flag" : entry, bc_src = a.bc ? "flag" : entry;
+        if (a.br == 0) a.br = t->br;
+        if (a.bc == 0) a.bc = t->bc;
+        config_line = "config  : Br=" + std::to_string(a.br) + " (" + br_src + ") Bc=" + std::to_string(a.bc) +
+                      " (" + bc_src + ")";
+        if (spec.tunable_warps) {
+            std::string w_src = "flag";
+            if (a.warps == 0) {
+                a.warps = tile_given ? spec.native_warps(a.br) : t->warps;
+                w_src = tile_given ? "native for Br" : entry;
+            }
+            config_line += " warps=" + std::to_string(a.warps) + " (" + w_src + ")";
+        }
     }
     if (spec.validate) {
         const std::string why = spec.validate(a);
@@ -146,6 +169,7 @@ int run_gpu_stage(int argc, char** argv, const GpuStageSpec& spec) {
     W04_CUDA_CHECK(cudaGetDeviceProperties(&prop, 0));
     std::printf("%s  git=%s  device=%s (sm_%d%d)\nflags   : %s\n", spec.meta.stage_id, W04_GIT_SHA, prop.name,
                 prop.major, prop.minor, W04_COMPILER_FLAGS);
+    if (!config_line.empty()) std::printf("%s\n", config_line.c_str());
 
     GpuMemTracker mem;  // baseline before any allocation
     const std::size_t bytes = s.elems() * sizeof(float);
@@ -211,7 +235,7 @@ int run_gpu_stage(int argc, char** argv, const GpuStageSpec& spec) {
     W04_CUDA_CHECK(cudaFree(dV));
     W04_CUDA_CHECK(cudaFree(dO));
     return report_and_write(spec.meta, a, rep_ms, chk, peak, /*threads=*/0, a.br, a.bc,
-                            has_prepare<Stage>::value ? &prep_ms : nullptr);
+                            has_prepare<Stage>::value ? &prep_ms : nullptr, a.warps);
 }
 
 }  // namespace w04

@@ -12,8 +12,20 @@
 #      Every stage also runs n = 203, d = 40 (N not a multiple of any tile, d not
 #      a multiple of 16/64). Tunable stages also run ragged-tile cases
 #      (N not a multiple of Br/Bc, one with d = 40). Kind 1 = any Br/Bc (CPU);
-#      kind 2 = compiled tile set Br, Bc in {16, 32, 64} (GPU S2b, S3): all 9
-#      tiles at n = 203 plus one d = 40 case
+#      kind 2 = compiled tile set Br, Bc in {16, 32, 64}: all 9 tiles at n = 203
+#      plus one d = 40 case; kind 3 = kind 2 with a warps axis (P5, C27; GPU
+#      S2b, S3): every (Br, Bc, W) of Br, Bc in {16, 32, 64} x W in {1, 2, 4, 8}
+#      is run at n = 203; refused cells (exit 2 + reason) are counted, and the
+#      number of runnable cells must equal the expected count (S2b 27, S3 12
+#      per precision), so a lost instance fails
+#   5b. warps change only the thread mapping, not the arithmetic: at every tile
+#      the O of each runnable W must be bitwise equal to the O of the native W
+#      (S2b: 8, S3: Br/16). One measured exception: S2b at Br = 16, where nvcc
+#      contracts multiply-adds differently for one row per thread (W = 8) than
+#      for 2 or 4 (W = 4, 2); with -fmad=false those cells are bitwise equal
+#      too (P5 step 1). They must agree within 1e-6 normwise and are listed
+#   5c. tuned defaults (C29): a run without --br/--bc/--warps must use the
+#      w04_tuned.hpp entry nearest to its n (checked at n = 256 and 4096)
 #   6. direct stage-vs-stage checks at n = 1024 (O dumped via W04_DUMP_O,
 #      compared by tools/w04_compare_o.py, normwise rel): GPU S2b vs S2a
 #      (<= 1e-4); GPU S3 FP16 / TF32 vs S2b at 64x64 (<= the stage tolerance,
@@ -81,10 +93,19 @@ STAGES=(
     "W04_ATTENTION_GPU_S1_BASE_NAIVE 0"
     "W04_ATTENTION_GPU_S2a_SWOPT_UNFUSED 0"
     "W04_ATTENTION_GPU_REF_CUBLAS 0"
-    "W04_ATTENTION_GPU_S2b_SWOPT_FUSED 2"
-    "W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 2"
-    "W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 2"
+    "W04_ATTENTION_GPU_S2b_SWOPT_FUSED 3"
+    "W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 3"
+    "W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 3"
 )
+# Kind 3: runnable (Br, Bc, W) cells expected per binary, and the native warps of a tile.
+declare -A EXPECTED_CELLS=(
+    [W04_ATTENTION_GPU_S2b_SWOPT_FUSED]=27
+    [W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16]=12
+    [W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32]=12
+)
+native_warps() {  # <binary name> <br>
+    if [[ "$1" == *S2b* ]]; then echo 8; else echo $(( $2 / 16 )); fi
+}
 
 echo "== stages (${#STAGES[@]} registered) =="
 for entry in "${STAGES[@]}"; do
@@ -114,6 +135,55 @@ for entry in "${STAGES[@]}"; do
     elif [[ "$tunable" == 2 ]]; then
         for br in 16 32 64; do for bc in 16 32 64; do shapes+=("--n 203 --d 64 --br $br --bc $bc"); done; done
         shapes+=("--n 203 --d 40 --br 64 --bc 16")
+    elif [[ "$tunable" == 3 ]]; then
+        shapes+=("--n 203 --d 40 --br 64 --bc 16" "--n 203 --d 40 --br 64 --bc 16 --warps 2")
+        cells=0 refused=0
+        for br in 16 32 64; do for bc in 16 32 64; do for w in 1 2 4 8; do
+            tag="br${br}bc${bc}w${w}"
+            probe="$OUT/${name}_${tag}_probe.log"
+            "$bin" --n 203 --d 64 --bh 2 --br "$br" --bc "$bc" --warps "$w" --iters 1 --reps 1 --warmup 0 \
+                --input normal --out "$OUT/${name}.csv" >"$probe" 2>&1 && rc=0 || rc=$?
+            if (( rc == 2 )) && grep -q ': error: ' "$probe"; then
+                refused=$((refused + 1))
+                continue
+            fi
+            cells=$((cells + 1))
+            for input in normal large_logits; do
+                log="$OUT/${name}_${tag}_${input}.log"
+                dump=()
+                [[ "$input" == normal ]] && dump=(env "W04_DUMP_O=$OUT/O_${name}_${tag}.bin")
+                run_check "$name (Br=$br Bc=$bc W=$w, n=203) $input" "$log" \
+                    "${dump[@]}" "$bin" --n 203 --d 64 --bh 2 --br "$br" --bc "$bc" --warps "$w" \
+                    --iters 1 --reps 1 --warmup 0 --input "$input" --out "$OUT/${name}.csv"
+            done
+        done; done; done
+        if (( cells == EXPECTED_CELLS[$name] )); then
+            ok "$name: $cells runnable (Br, Bc, W) cells, $refused refused with a reason (expected ${EXPECTED_CELLS[$name]})"
+        else
+            bad "$name: $cells runnable cells (expected ${EXPECTED_CELLS[$name]}), $refused refused"
+        fi
+        # 5b: O is bitwise independent of the warp count.
+        same=0 diff=0 near=0
+        for br in 16 32 64; do for bc in 16 32 64; do
+            nat="$OUT/O_${name}_br${br}bc${bc}w$(native_warps "$name" "$br").bin"
+            for w in 1 2 4 8; do
+                f="$OUT/O_${name}_br${br}bc${bc}w${w}.bin"
+                [[ -f "$f" && "$f" != "$nat" ]] || continue
+                if [[ -f "$nat" ]] && cmp -s "$f" "$nat"; then
+                    same=$((same + 1))
+                elif [[ -f "$nat" && "$name" == *S2b* && "$br" == 16 ]] &&
+                     python3 tools/w04_compare_o.py "$f" "$nat" --tol 1e-6 >"$OUT/cmp_w_${name}_${br}_${bc}_${w}.log" 2>&1; then
+                    near=$((near + 1))
+                    echo "  INFO  $name Br=$br Bc=$bc W=$w vs W=8: not bitwise (FMA contraction)," \
+                        "$(grep -oE 'max_rel\(normwise\)=[^ ]+' "$OUT/cmp_w_${name}_${br}_${bc}_${w}.log")"
+                else
+                    diff=$((diff + 1))
+                fi
+            done
+        done; done
+        if (( diff == 0 && same > 0 )); then
+            ok "$name: O bitwise equal across warp counts ($same cells; $near listed Br=16 cells within 1e-6)"
+        else bad "$name: O differs from the native warp count in $diff cells ($same equal, $near within 1e-6)"; fi
     fi
     if (( ${#shapes[@]} > 0 )); then
         for shape in "${shapes[@]}"; do
@@ -179,6 +249,28 @@ if [[ -x "$G2B_BIN" && -x "$G3_FP16_BIN" && -x "$G3_TF32_BIN" ]]; then
 else
     bad "S3 vs S2b comparison (binary missing)"
 fi
+
+echo "== tuned defaults (w04_tuned.hpp, nearest tuned N) =="
+# Expected entry: the table line for the stage whose N is nearest to n (ties to the smaller N).
+expected_entry() {  # <stage id> <n>  ->  "br bc warps"
+    sed -nE "s/^ *\{\"$1\", ([0-9]+), ([0-9]+), ([0-9]+), ([0-9]+)\},.*/\1 \2 \3 \4/p" src/common/w04_tuned.hpp |
+        awk -v n="$2" '{d = $1 > n ? $1 - n : n - $1; if (!seen || d < bd || (d == bd && $1 < bn)) {seen = 1; bd = d; bn = $1; e = $2 " " $3 " " $4}} END {print e}'
+}
+for name in W04_ATTENTION_GPU_S2b_SWOPT_FUSED W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 \
+            W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32; do
+    for n in 256 4096; do
+        log="$OUT/${name}_default_n${n}.log"
+        run_check "$name n=$n without tile flags" "$log" \
+            "build/$name" --n "$n" --bh 1 --d 64 --iters 1 --reps 1 --warmup 0 --out "$OUT/${name}_default.csv"
+        read -r ebr ebc ew <<<"$(expected_entry "$name" "$n")"
+        got=$(grep -E '^tile    : ' "$log" | sed -E 's/.*Br=([0-9]+) Bc=([0-9]+), [0-9]+ threads \(([0-9]+) warps\).*/\1 \2 \3/')
+        if [[ -n "$ebr" && "$got" == "$ebr $ebc $ew" ]] && grep -qE '^config  : .*\(tuned N=' "$log"; then
+            ok "$name n=$n default = tuned entry (Br=$ebr Bc=$ebc W=$ew)"
+        else
+            bad "$name n=$n default: got '$got', expected '$ebr $ebc $ew' (log: $log)"
+        fi
+    done
+done
 
 echo "== machine code =="
 S3_BIN=build/W04_ATTENTION_CPU_S3_HWACC_AVX2

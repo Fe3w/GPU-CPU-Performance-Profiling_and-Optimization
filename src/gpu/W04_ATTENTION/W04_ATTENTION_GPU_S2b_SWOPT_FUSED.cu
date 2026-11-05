@@ -17,13 +17,17 @@
 //       m_i   = m_new
 //   O_i = O_i / l_i  → global memory (the only write)
 //
-// Thread mapping: 256 threads (16×16) for every tile size. Thread (ty, tx) owns
-// the S elements at rows i = ty + 16a (a < Br/16) and columns j = tx + 16b
-// (b < Bc/16), and the O elements at the same rows and columns c = tx + 16b
-// (b < 4). Per step of the d loop a thread loads Br/16 + Bc/16 values from
-// shared memory and does (Br/16)·(Bc/16) FMAs (2 FMA per load at 64×64, 1 at
-// 32×32; S2a: 0.5). The 16 threads of one row form a half-warp, so row max and
-// row sum are reduced with shuffles (no shared memory, no barrier).
+// Thread mapping: W warps per block (P5, decision C27: W ∈ {2, 4, 8}) arranged
+// as 16 × TY threads with TY = 2W. Thread (ty, tx) owns the S elements at rows
+// i = ty + TY·a (a < TM = Br/TY) and columns j = tx + 16b (b < Bc/16), and the
+// O elements at the same rows and columns c = tx + 16b (b < 4). Per step of
+// the d loop a thread loads TM + Bc/16 values from shared memory and does
+// TM·(Bc/16) FMAs (at 64×64: 2 FMA per load with W = 8, 2.7 with W = 4, 3.2
+// with W = 2; S2a: 0.5). Fewer warps give each thread more of the tile (more
+// reuse per load, more registers) and the block fewer warps to hide latency.
+// W = 8 (256 threads, 16×16) is the P3 kernel unchanged. The 16 threads of one
+// row form a half-warp, so row max and row sum are reduced with shuffles (no
+// shared memory, no barrier).
 //
 // Shared memory (dynamic, per instantiation): Qs[Br][65], Ks[Bc][65],
 // Vs[Bc][64], Ps[Br][Bc+1]. The +1 pads make the column-wise K reads and the
@@ -37,7 +41,7 @@
 //   * P̃ goes through shared memory because a thread holds only Bc/16 columns
 //     of its rows but needs all Bc for P̃·V
 //   * d ≤ 64 (shorter heads are zero-padded to 64, so d < 64 wastes work)
-//   * Br, Bc ∈ {16, 32, 64} (compile-time instantiations)
+//   * Br, Bc ∈ {16, 32, 64}, W ∈ {2, 4, 8} (27 compile-time instantiations)
 //   * K and V are re-read from global memory (mostly L2) once per query block
 // -----------------------------------------------------------------------------
 #include <cfloat>
@@ -53,13 +57,16 @@ namespace {
 
 constexpr int kDmax = 64;              // head dimension the tiles are sized for
 constexpr int kQKStride = kDmax + 1;   // padded row length of Qs and Ks
-constexpr int kThreads = 256;          // 16 × 16
+constexpr int kNativeWarps = 8;        // the P3 mapping (16 × 16 threads)
 constexpr unsigned kFull = 0xffffffffu;
 
-template <int Br, int Bc>
+template <int Br, int Bc, int W>
 struct Tile {
     static_assert(Br % 16 == 0 && Bc % 16 == 0, "Br and Bc must be multiples of 16");
-    static constexpr int TM = Br / 16;
+    static constexpr int TY = 2 * W;          // thread rows of the block
+    static constexpr int kThreads = 16 * TY;  // 32·W
+    static_assert(Br % TY == 0, "Br must be a multiple of 2·W");
+    static constexpr int TM = Br / TY;
     static constexpr int TN = Bc / 16;
     static constexpr int kPStride = Bc + 1;
     static constexpr std::size_t q_floats = static_cast<std::size_t>(Br) * kQKStride;
@@ -81,12 +88,12 @@ __device__ __forceinline__ float row_sum16(float v) {
     return v;
 }
 
-template <int Br, int Bc>
-__global__ void __launch_bounds__(kThreads)
+template <int Br, int Bc, int W>
+__global__ void __launch_bounds__(Tile<Br, Bc, W>::kThreads)
 flash_fwd_fp32(const float* __restrict__ Q, const float* __restrict__ K, const float* __restrict__ V,
                float* __restrict__ O, int N, int d, float scale) {
-    using T = Tile<Br, Bc>;
-    constexpr int TM = T::TM, TN = T::TN, kPStride = T::kPStride;
+    using T = Tile<Br, Bc, W>;
+    constexpr int TM = T::TM, TN = T::TN, TY = T::TY, kPStride = T::kPStride, kThreads = T::kThreads;
     extern __shared__ float smem[];
     float* Qs = smem;
     float* Ks = Qs + T::q_floats;
@@ -136,7 +143,7 @@ flash_fwd_fp32(const float* __restrict__ Q, const float* __restrict__ K, const f
         for (int c = 0; c < kDmax; ++c) {
             float q[TM], k[TN];
 #pragma unroll
-            for (int a = 0; a < TM; ++a) q[a] = Qs[(ty + 16 * a) * kQKStride + c];
+            for (int a = 0; a < TM; ++a) q[a] = Qs[(ty + TY * a) * kQKStride + c];
 #pragma unroll
             for (int b = 0; b < TN; ++b) k[b] = Ks[(tx + 16 * b) * kQKStride + c];
 #pragma unroll
@@ -160,7 +167,7 @@ flash_fwd_fp32(const float* __restrict__ Q, const float* __restrict__ K, const f
             for (int b = 0; b < TN; ++b) {
                 const float p = (j0 + tx + 16 * b < N) ? expf(S[a][b] - m_new) : 0.0f;
                 rs += p;
-                Ps[(ty + 16 * a) * kPStride + tx + 16 * b] = p;
+                Ps[(ty + TY * a) * kPStride + tx + 16 * b] = p;
             }
             const float alpha = expf(m[a] - m_new);  // 0 on the first tile (m = −FLT_MAX)
             l[a] = alpha * l[a] + row_sum16(rs);
@@ -175,7 +182,7 @@ flash_fwd_fp32(const float* __restrict__ Q, const float* __restrict__ K, const f
         for (int jj = 0; jj < Bc; ++jj) {
             float p[TM], v[4];
 #pragma unroll
-            for (int a = 0; a < TM; ++a) p[a] = Ps[(ty + 16 * a) * kPStride + jj];
+            for (int a = 0; a < TM; ++a) p[a] = Ps[(ty + TY * a) * kPStride + jj];
 #pragma unroll
             for (int b = 0; b < 4; ++b) v[b] = Vs[jj * kDmax + tx + 16 * b];
 #pragma unroll
@@ -190,7 +197,7 @@ flash_fwd_fp32(const float* __restrict__ Q, const float* __restrict__ K, const f
     float* Oh = O + head;
 #pragma unroll
     for (int a = 0; a < TM; ++a) {
-        const int i = i0 + ty + 16 * a;
+        const int i = i0 + ty + TY * a;
         if (i >= N) continue;
 #pragma unroll
         for (int b = 0; b < 4; ++b) {
@@ -203,43 +210,64 @@ flash_fwd_fp32(const float* __restrict__ Q, const float* __restrict__ K, const f
 using KernelFn = void (*)(const float*, const float*, const float*, float*, int, int, float);
 
 struct Instance {
-    int br, bc;
+    int br, bc, warps;
     KernelFn fn;
     std::size_t smem;
 };
 
-template <int Br, int Bc>
+template <int Br, int Bc, int W>
 constexpr Instance make_instance() {
-    return Instance{Br, Bc, &flash_fwd_fp32<Br, Bc>, Tile<Br, Bc>::bytes};
+    return Instance{Br, Bc, W, &flash_fwd_fp32<Br, Bc, W>, Tile<Br, Bc, W>::bytes};
+}
+template <int Br, int Bc>
+constexpr Instance make_w2() { return make_instance<Br, Bc, 2>(); }
+template <int Br, int Bc>
+constexpr Instance make_w4() { return make_instance<Br, Bc, 4>(); }
+template <int Br, int Bc>
+constexpr Instance make_w8() { return make_instance<Br, Bc, 8>(); }
+
+#define W04_S2B_TILES(MAKE)                                                                     \
+    MAKE<16, 16>(), MAKE<16, 32>(), MAKE<16, 64>(), MAKE<32, 16>(), MAKE<32, 32>(), MAKE<32, 64>(), \
+        MAKE<64, 16>(), MAKE<64, 32>(), MAKE<64, 64>()
+constexpr Instance kInstances[] = {W04_S2B_TILES(make_w2), W04_S2B_TILES(make_w4), W04_S2B_TILES(make_w8)};
+#undef W04_S2B_TILES
+
+const Instance* find_instance(int br, int bc, int warps) {
+    for (const Instance& in : kInstances)
+        if (in.br == br && in.bc == bc && in.warps == warps) return &in;
+    return nullptr;
 }
 
-constexpr Instance kInstances[] = {
-    make_instance<16, 16>(), make_instance<16, 32>(), make_instance<16, 64>(),
-    make_instance<32, 16>(), make_instance<32, 32>(), make_instance<32, 64>(),
-    make_instance<64, 16>(), make_instance<64, 32>(), make_instance<64, 64>(),
-};
-
-const Instance* find_instance(int br, int bc) {
-    for (const Instance& in : kInstances)
-        if (in.br == br && in.bc == bc) return &in;
-    return nullptr;
+// Why a (Br, Bc, W) cannot run; "" if it can. The sweep records this text for
+// skipped configurations.
+std::string unsupported_reason(int br, int bc, int warps) {
+    auto in_set = [](int v) { return v == 16 || v == 32 || v == 64; };
+    if (!in_set(br) || !in_set(bc))
+        return "Br=" + std::to_string(br) + " Bc=" + std::to_string(bc) +
+               " is not instantiated (Br, Bc in {16, 32, 64})";
+    if (warps != 2 && warps != 4 && warps != 8)
+        return "warps=" + std::to_string(warps) + " is not instantiated (warps in {2, 4, 8})";
+    if (br % (2 * warps) != 0)
+        return "Br=" + std::to_string(br) + " is not a multiple of 2*warps=" + std::to_string(2 * warps);
+    const Instance* in = find_instance(br, bc, warps);
+    if (in == nullptr) return "not instantiated";
+    cudaDeviceProp prop{};
+    W04_CUDA_CHECK(cudaGetDeviceProperties(&prop, 0));
+    if (in->smem > prop.sharedMemPerBlockOptin)
+        return "shared memory " + std::to_string(in->smem) + " B exceeds the opt-in limit " +
+               std::to_string(prop.sharedMemPerBlockOptin) + " B";
+    return "";
 }
 
 class StageS2b {
 public:
     // No workspace: the only device buffers are Q, K, V and O (owned by the harness).
-    StageS2b(const w04::AttnShape&, const w04::BenchArgs& a) : inst_(find_instance(a.br, a.bc)) {
-        cudaDeviceProp prop{};
-        W04_CUDA_CHECK(cudaGetDeviceProperties(&prop, 0));
-        if (inst_->smem > prop.sharedMemPerBlockOptin) {
-            std::fprintf(stderr, "S2b: Br=%d Bc=%d needs %zu B shared memory, opt-in limit is %zu B\n", inst_->br,
-                         inst_->bc, inst_->smem, static_cast<std::size_t>(prop.sharedMemPerBlockOptin));
-            std::exit(2);
-        }
+    // The shared-memory limit was checked by validate (unsupported_reason).
+    StageS2b(const w04::AttnShape&, const w04::BenchArgs& a) : inst_(find_instance(a.br, a.bc, a.warps)) {
         W04_CUDA_CHECK(cudaFuncSetAttribute(inst_->fn, cudaFuncAttributeMaxDynamicSharedMemorySize,
                                             static_cast<int>(inst_->smem)));
-        std::printf("tile    : Br=%d Bc=%d, %d threads, %zu B dynamic shared memory per block\n", inst_->br,
-                    inst_->bc, kThreads, inst_->smem);
+        std::printf("tile    : Br=%d Bc=%d, %d threads (%d warps), %zu B dynamic shared memory per block\n",
+                    inst_->br, inst_->bc, 32 * inst_->warps, inst_->warps, inst_->smem);
     }
 
     int phases() const { return 1; }
@@ -248,7 +276,7 @@ public:
     void launch(int, const w04::DeviceAttn& io) {
         const int N = static_cast<int>(io.s.n);
         const dim3 grid((N + inst_->br - 1) / inst_->br, io.s.bh);
-        const dim3 block(16, 16);
+        const dim3 block(16, 2 * inst_->warps);
         inst_->fn<<<grid, block, inst_->smem>>>(io.Q, io.K, io.V, io.O, N, io.s.d,
                                                 1.0f / std::sqrt(static_cast<float>(io.s.d)));
     }
@@ -262,15 +290,12 @@ private:
 int main(int argc, char** argv) {
     w04::GpuStageSpec spec;
     spec.meta = {"W04_ATTENTION_GPU_S2b_SWOPT_FUSED", "S2b_SWOPT", "FUSED", "GPU", w04::Precision::FP32};
-    spec.tunable = true;
-    spec.default_br = 32;  // decision C18 (provisional until the E7 autotune): fits the 48 KiB default
-    spec.default_bc = 32;
+    spec.tunable = true;  // defaults: w04_tuned.hpp (decision C29)
+    spec.tunable_warps = true;
+    spec.native_warps = [](int) { return kNativeWarps; };
     spec.validate = [](const w04::BenchArgs& a) -> std::string {
         if (a.d > kDmax) return "d=" + std::to_string(a.d) + " is not supported (d <= 64)";
-        if (!find_instance(a.br, a.bc))
-            return "Br=" + std::to_string(a.br) + " Bc=" + std::to_string(a.bc) +
-                   " is not instantiated (Br, Bc in {16, 32, 64})";
-        return "";
+        return unsupported_reason(a.br, a.bc, a.warps);
     };
     return w04::run_gpu_stage<StageS2b>(argc, argv, spec);
 }

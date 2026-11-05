@@ -48,7 +48,7 @@ Measured on the hardware above (mean of 5 repetitions). W04 CPU numbers come fro
 | W04 P2 | GPU S1, S2a unfused, cuBLAS reference | done: S1→S2a 3.3–4.3×; S2a reaches 31–38% of the cuBLAS-based reference (N=512–8192), with the GPU at its 55 W power limit |
 | W04 P3 | GPU S2b fused kernel | done: one FlashAttention-2-style FP32 kernel (online softmax, no N×N buffer, peak device memory linear in N); faster than S2a at every N (1.5–2.1× at 32×32, 2.1–3.0× at 64×64, N=512–8192); DRAM bytes measured with Nsight Compute: ~21–42× fewer than S2a at N=2048–4096 |
 | W04 P4 | GPU S3 Tensor Core kernel | done: FP16 (WMMA m16n16k16, `HMMA.16816.F32`) and TF32 (m16n16k8, `HMMA.1684.F32.TF32`) variants of the fused kernel, FP32 softmax, accumulation and output, 64×64 tiles; FP16 5.0–5.2× and TF32 1.7–1.8× faster than the FP32 fused kernel at the same tile (N=2048–8192); Nsight Compute shows no saturated pipe (tensor pipe 22% busy) — the kernel is latency-bound at low occupancy |
-| W04 P5 | autotuning | planned: tile (Br × Bc) and warps-per-block search for the fused FP32 and Tensor Core kernels, plus a `--use_fast_math` comparison of the fused FP32 kernel |
+| W04 P5 | autotuning | in progress: warps-per-block parameter for the fused FP32 and Tensor Core kernels (output bitwise independent of the warp count), tile × warps search and `--use_fast_math` comparison scripts; measurements next |
 | W04 P6 | profiling and plots | planned |
 | W04 P7 | demo integration | planned |
 
@@ -86,6 +86,12 @@ W04 compiler-flag study binaries (`-O2`, `-O3 -march=native`, `-O3 -ffast-math`,
 make w04-flagstudy                     # into build/flagstudy/
 ```
 
+GPU fast-math binary (the fused FP32 kernel S2b with `--use_fast_math`):
+
+```bash
+make w04-gpu-flagstudy                 # build/flagstudy/W04_ATTENTION_GPU_S2b_SWOPT_FUSED.fastmath
+```
+
 ## Run a benchmark
 
 Every W04 binary takes the same flags and prints a summary plus `Correct : YES|NO`:
@@ -116,10 +122,11 @@ Measured DRAM bytes and operational intensity from Nsight Compute raw-page CSV e
 python3 tools/w04_e3_oi.py <folder with .raw.csv exports>
 ```
 
-S2b tile size is selectable (`--br`, `--bc` in {16, 32, 64}), e.g.:
+S2b tile size and warps per block are selectable (`--br`, `--bc` in {16, 32, 64}, `--warps` in {2, 4, 8}; the warp count changes only the thread mapping, not the result). Without these flags a binary uses the defaults in `src/common/w04_tuned.hpp` (the entry tuned at the N nearest to `--n`); with `--br`/`--bc` but no `--warps` it uses 8 warps:
 
 ```bash
 build/W04_ATTENTION_GPU_S2b_SWOPT_FUSED --n 1024 --br 64 --bc 64
+build/W04_ATTENTION_GPU_S2b_SWOPT_FUSED --n 1024 --br 64 --bc 64 --warps 4
 ```
 
 The Tensor Core stage S3 has two binaries, one per input precision (default tile 64×64, same flags). The FP16 binary converts Q, K and V to half before the timed loop and reports that conversion time separately (`prepare` line, CSV column `prep_ms`):
@@ -127,6 +134,17 @@ The Tensor Core stage S3 has two binaries, one per input precision (default tile
 ```bash
 build/W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 --n 1024
 build/W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 --n 1024
+```
+
+S3 also takes `--warps`, up to Br/16 (each warp owns one or more 16-row query strips; Br = 64 runs with 4 or 2 warps). A configuration that cannot run is refused with the reason (exit status 2).
+
+Autotune (Br × Bc × warps screen at N = 2048 and 4096, then the full protocol for the top 3 per stage), its ranking report and heatmaps, and the fast-math comparison:
+
+```bash
+bash scripts/w04_sweep.sh gpu-autotune
+python3 tools/w04_e7_select.py report results/raw/W04_ATTENTION/<run folder>
+python3 tools/w04_e7_heatmap.py results/raw/W04_ATTENTION/<run folder>   # PNGs into docs/figures/w04/
+bash scripts/w04_sweep.sh gpu-flags
 ```
 
 ## Repository layout
