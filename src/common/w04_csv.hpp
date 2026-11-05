@@ -173,6 +173,11 @@ inline int report_and_write(const StageMeta& m, const BenchArgs& a, const std::v
     std::printf("summary : %s %s | %.4f ± %.4f ms | %.1f GFLOP/s | %s\n", m.stage_id, args_to_string(a).c_str(),
                 mean, sd, gflops, to_string(m.precision));
 
+    {
+        const std::string sha = W04_GIT_SHA;
+        if (sha == "nogit" || (sha.size() > 6 && sha.compare(sha.size() - 6, 6, "-dirty") == 0))
+            std::printf("warning : git_sha=%s (results not reproducible from a clean commit)\n", sha.c_str());
+    }
     const std::string path = a.out.empty() ? default_out_path(m.stage_id) : a.out;
     W04CsvWriter w(path);
     const std::string ts = iso_timestamp();

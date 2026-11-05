@@ -17,6 +17,8 @@
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <cstring>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -34,6 +36,15 @@ static int g_fail = 0, g_pass = 0;
         else { ++g_fail; std::printf("  FAIL %s:%d: ", __FILE__, __LINE__); \
                std::printf(__VA_ARGS__); std::printf("\n"); }              \
     } while (0)
+
+// +inf or -inf, decided from the bit pattern. std::isinf may be folded to
+// false under -ffinite-math-only, and the compiler-flag study builds this
+// self-test with -ffast-math to prove the harness still works there.
+static bool is_inf_bits(double x) {
+    std::uint64_t u;
+    std::memcpy(&u, &x, sizeof u);
+    return (u & 0x7FFFFFFFFFFFFFFFull) == 0x7FF0000000000000ull;
+}
 
 static std::vector<RowId> all_rows(const AttnShape& s) { return select_check_rows(s, 0, s.n + 1); }
 
@@ -207,7 +218,7 @@ static void test_metrics() {
     for (float bad : {NAN, INFINITY, -INFINITY}) {
         const std::vector<float> O = {1.0f, bad, -3.0f};
         const ErrorStats e = compare_rows(O.data(), s, rows, ref);
-        CHECK(e.n_nonfinite == 1 && std::isinf(e.max_rel_err) && !passes(e, Precision::FP16),
+        CHECK(e.n_nonfinite == 1 && is_inf_bits(e.max_rel_err) && !passes(e, Precision::FP16),
               "non-finite (%g) must be counted and fail", static_cast<double>(bad));
     }
     {
@@ -256,9 +267,9 @@ static void test_controls() {
                 }
                 if (k == Control::Unstable && c == InputCase::LargeLogits) {
                     // Overflow must be reported as unbounded error, in the main AND the row-sum check.
-                    CHECK(r.main.n_nonfinite > 0 && std::isinf(r.main.max_abs_err) && std::isinf(r.main.max_rel_err),
+                    CHECK(r.main.n_nonfinite > 0 && is_inf_bits(r.main.max_abs_err) && is_inf_bits(r.main.max_rel_err),
                           "unstable/large_logits: non-finite outputs must give max_abs = max_rel = inf");
-                    CHECK(r.rowsum.n_nonfinite > 0 && std::isinf(r.rowsum.max_abs_err) &&
+                    CHECK(r.rowsum.n_nonfinite > 0 && is_inf_bits(r.rowsum.max_abs_err) &&
                               !passes(r.rowsum, Precision::FP32),
                           "unstable/large_logits: NaN in the V=ones run must fail the row-sum check");
                 }
@@ -282,7 +293,7 @@ static void test_controls() {
                                               if (in.V[0] == 1.0f && in.V[1] == 1.0f) O[s.index(0, 7, 3)] = NAN;
                                           });
         CHECK(passes(r.main, Precision::FP32) && !passes(r.rowsum, Precision::FP32) && r.rowsum.n_nonfinite == 1 &&
-                  std::isinf(r.rowsum.max_abs_err) && !r.correct,
+                  is_inf_bits(r.rowsum.max_abs_err) && !r.correct,
               "NaN injected only into the V=ones run must fail the row-sum check");
     }
 }
@@ -458,7 +469,12 @@ static void test_csv(const std::string& dir) {
 
     CHECK(run_timestamp().size() == 15 && run_timestamp()[8] == '-', "run timestamp format YYYYMMDD-HHMMSS");
     CHECK(default_out_path("X").rfind("results/raw/W04_ATTENTION/", 0) == 0, "default output folder");
-    CHECK(std::string(W04_GIT_SHA) != "unknown", "git SHA must be compiled in (got '%s')", W04_GIT_SHA);
+    // "unknown" = build info header missing (not built by the Makefile): fail.
+    // "nogit"   = built without git (archive copy): allowed, but warned about.
+    const std::string sha = W04_GIT_SHA;
+    CHECK(!sha.empty() && sha != "unknown", "git SHA must be compiled in (got '%s')", W04_GIT_SHA);
+    if (sha == "nogit")
+        std::printf("WARN : built without git (git_sha=nogit); results are not traceable to a commit\n");
     CHECK(std::string(W04_COMPILER_FLAGS) != "unknown", "compiler flags must be compiled in");
 }
 

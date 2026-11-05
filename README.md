@@ -25,7 +25,7 @@ Every workload follows the same ladder:
 
 ## Key results so far
 
-Measured on the hardware above (mean of 5 repetitions):
+Measured on the hardware above (mean of 5 repetitions). W04 CPU numbers come from one session on a laptop that reached ~97 °C under load, so differences below ~10–15% between experiments are not significant:
 
 | Workload | Result | Why |
 |---|---|---|
@@ -33,7 +33,8 @@ Measured on the hardware above (mean of 5 repetitions):
 | W02 GPU | ~28× faster (43.3 → 1.55 ms) | Restructuring the reduction keeps the GPU busy. |
 | W03 CPU | ~121× faster (0.71 → 86 GFLOP/s) | Cache blocking × threads × 8-wide FMA |
 | W03 GPU | ~3.5× faster (2.83 → 0.80 ms) | Shared-memory reuse, then Tensor Cores (`HMMA` verified in SASS) |
-| W04 | *in progress, see status* | Fusion removes the N×N intermediate from DRAM |
+| W04 CPU | ~62× faster at N=1024 (285.8 → 4.59 ms; 7.5 → 469 GFLOP/s) | Fusion + blocking (S1→S2 28.8×), then 8-wide FMA and a vector `exp` (S2→S3 2.2×), on 20 threads |
+| W04 GPU | *in progress, see status* | Fusion removes the N×N intermediate from DRAM |
 
 ## Status
 
@@ -41,7 +42,7 @@ Measured on the hardware above (mean of 5 repetitions):
 |---|---|---|
 | W01–W03 | benchmarks, profiling, analysis | done |
 | W04 P0 | harness, double-precision reference, correctness tests | done |
-| W04 P1 | CPU attention S1–S3 | planned |
+| W04 P1 | CPU attention S1–S3, compiler-flag study, 1–20 thread sweep, tile-size choice | done: S1→S3 62× at N=1024 (7.5 → 469 GFLOP/s); default tiles S2 64×64, S3 32×64 from a temperature-logged rerun |
 | W04 P2 | GPU S1, S2a unfused, cuBLAS reference | planned |
 | W04 P3 | GPU S2b fused kernel | planned |
 | W04 P4 | GPU S3 Tensor Core kernel | planned |
@@ -66,7 +67,22 @@ make w04                               # build W04 binaries into build/
 bash tests/test_w04_correctness.sh     # all stages vs a double-precision reference
 ```
 
-TODO: list the build targets for W01–W03 here once they are in the Makefile.
+W01–W03 binaries (one per stage, named after the source file):
+
+```bash
+make w01        # vector add:  CPU S1–S3, GPU S1–S2
+make w02        # dot product: CPU S1–S3, GPU S1–S2
+make w03        # GEMM:        CPU S1–S3, GPU S1–S3
+make legacy     # all of the above
+```
+
+Each W01–W03 binary is built with the flags it records in its own CSV output. CPU S1 stages use `-O0 -g`. W02/W03 CPU S2/S3 use `-O3` with auto-vectorization turned off (`-fno-tree-vectorize -fno-tree-slp-vectorize`), so that the AVX2 stage is the only vectorized one. W03 CPU S2/S3 use a 128×128 tile.
+
+W04 compiler-flag study binaries (`-O2`, `-O3 -march=native`, `-O3 -ffast-math`, `-O3 -march=native -ffast-math`):
+
+```bash
+make w04-flagstudy                     # into build/flagstudy/
+```
 
 ## Run a benchmark
 
@@ -77,6 +93,13 @@ Every W04 binary takes the same flags and prints a summary plus `Correct : YES|N
 ```
 
 Results are written as CSV, one row per repetition, including the git commit and a timestamp.
+A build made outside a git checkout records `git_sha=nogit` and prints a warning.
+
+CPU tunable stages also accept `--br` and `--bc` (query and key/value tile sizes). The CPU experiments (N sweep, tile grid, 1–20 thread sweep, compiler-flag study) run as one session:
+
+```bash
+bash scripts/w04_sweep.sh cpu-all      # writes results/raw/W04_ATTENTION/<YYYYMMDD-HHMMSS>/
+```
 
 ## Repository layout
 

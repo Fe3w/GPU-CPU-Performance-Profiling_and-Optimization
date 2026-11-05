@@ -1,7 +1,7 @@
 # W04 Plan: Fused Attention (Deep-Learning Workload)
 
 **Project:** GPU-CPU-Performance-Profiling_and-Optimization
-**Status:** plan; nothing implemented or measured yet
+**Status:** P0 done; P1 (CPU stages) implemented. See `docs/W04_PROGRESS.md` for what is measured
 **Hardware:** Intel Core i7-13650HX (6P+8E, AVX2/FMA) · RTX 4060 Laptop GPU (sm_89, 24 SMs, 8 GiB, 128-bit GDDR6)
 **Date:** 4 Nov 2026
 
@@ -46,6 +46,8 @@ The gap between those two OI values (≈16 → ≈256 at N=1024) is the headline
 
 ## 4. Stages
 
+**Cache sizes (decision C7, measured from sysfs in P1):** P-core L1d 48 KiB and L2 1.25 MiB (shared by the core's two SMT threads); E-core L1d 32 KiB and L2 2 MiB per 4-core cluster; L3 24 MiB. An earlier version of this plan assumed 2 MB of L2 per P-core.
+
 All stages use the existing ID convention: `W04_ATTENTION_<CPU|GPU>_<S#>_<BASE|SWOPT|HWACC>_<VARIANT>`.
 
 ### GPU
@@ -67,7 +69,7 @@ All stages use the existing ID convention: `W04_ATTENTION_<CPU|GPU>_<S#>_<BASE|S
 | Stage | Implementation |
 |---|---|
 | **S1_BASE** | Scalar triple loops; full S row per query in a buffer (per head N×N); `-O2`, no OpenMP |
-| **S2_SWOPT_BLOCKED_OMP** | Fused and blocked: OpenMP over (head, query-block); K/V tiles sized for L2 (2 MB per P-core); online softmax; no N×N buffer |
+| **S2_SWOPT_BLOCKED_OMP** | Fused and blocked: OpenMP over (head, query-block); K/V tiles of Bc rows sized for L1d (48 KiB per P-core), with one head's K and V (512·N B at d=64) re-read from L2 (**1.25 MiB per P-core**, measured; it fits up to N ≈ 2048); online softmax; no N×N buffer |
 | **S3_HWACC_AVX2** | S2 with AVX2/FMA intrinsics for both dot-product loops and a vectorized polynomial `exp` (8 lanes). Confirm `vfmadd*ps` with objdump. |
 
 **Compiler study (CPU S3):** `-O2` vs `-O3 -march=native` vs `-O3 -ffast-math`, auto-vectorized vs hand intrinsics. Record speed and error for each. On GPU, do the same with `--use_fast_math` (`expf` → `__expf`, which appears as `MUFU.EX2` in SASS).
@@ -91,14 +93,14 @@ All stages use the existing ID convention: `W04_ATTENTION_<CPU|GPU>_<S#>_<BASE|S
 | E5 Launch overhead | `nsys profile` on S1/S2a (3 kernels) vs S2b (1 kernel) | timeline gaps: first real use of Nsight Systems in the project |
 | E6 Peak memory vs N | `cudaMemGetInfo` before/after | O(N²) vs O(N) footprint plot |
 | E7 Autotune | sweep `Br, Bc ∈ {16, 32, 64}` and warps per block | heatmap; selected configuration |
-| E8 CPU | VTune hotspots, memory-access, uarch-exploration; thread sweep 1–20 | LLC-miss drop S1→S2; FMA/vector use in S3 |
+| E8 CPU | VTune hotspots, memory-access, uarch-exploration; thread sweep 1–20 | LLC-miss drop S1→S2; L2 hit rate of S2 at N=2048 (K/V fits the 1.25 MiB P-core L2) vs N=4096 (does not); FMA/vector use in S3 |
 | E9 *Decode case* (optional) | `N_q = 1`, `N_kv = 4096` | inference decode is memory-bound, which ties back to W01/W02 |
 
 **Hypotheses, written before measuring:**
 - H1: S1 time is dominated by S/P traffic and softmax, not by the GEMMs.
 - H2: S2a→S2b gains grow with N, because the bytes fusion saves grow as N².
 - H3: S3 is limited by softmax/`exp` and shared-memory traffic, not by Tensor Core throughput. W03-S3 showed the tensor pipe only ~10% active.
-- H4: CPU S2 gains come mainly from L2 reuse; S3 gains depend on vectorizing `exp`.
+- H4: CPU S2 gains come mainly from L2 reuse (per-head K/V resident in the 1.25 MiB P-core L2 up to N ≈ 2048); S3 gains depend on vectorizing `exp`.
 
 Each one is confirmed or rejected with a specific counter.
 
