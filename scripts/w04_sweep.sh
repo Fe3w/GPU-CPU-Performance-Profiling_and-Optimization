@@ -7,7 +7,7 @@
 #   bash scripts/w04_sweep.sh cpu-threads   S2/S3 at T = 1..20, N = 1024, 2048
 #   bash scripts/w04_sweep.sh cpu-flags     compiler-flag study (build/flagstudy/)
 #   bash scripts/w04_sweep.sh cpu-all       all CPU experiments in one session folder
-#   bash scripts/w04_sweep.sh gpu-nsweep    runtime vs N, GPU S1/S2a/REF_CUBLAS/S2b
+#   bash scripts/w04_sweep.sh gpu-nsweep    runtime vs N, GPU S1/S2a/REF_CUBLAS/S2b (32x32, 64x64)
 #
 # Output: results/raw/W04_ATTENTION/<YYYYMMDD-HHMMSS>/ (refused if it exists)
 #   run_info.txt  machine state at the start (CPU, caches, governor, power, GPU clocks)
@@ -251,13 +251,21 @@ stop_gpu_sampler() {
 gpu_nsweep() {
     echo "== GPU N sweep ($GPU_ROUNDS rounds, stage order rotated per round) =="
     start_gpu_sampler
-    local stages=("$G1" "$G2A" "$GREF" "$G2B") k=${#stages[@]}
+    # Entries are "<name>|<binary>|<extra args>". The name is the CSV and log
+    # name, so a second tile of the same binary gets its own summary row
+    # (decision C21: S2b at its default 32x32 tile and at 64x64).
+    local entries=("$G1|$G1|" "$G2A|$G2A|" "$GREF|$GREF|" "$G2B|$G2B|"
+                   "${G2B}_64x64|$G2B|--br 64 --bc 64")
+    local k=${#entries[@]}
     for ((round = 1; round <= GPU_ROUNDS; round++)); do
         for n in "${NS_GPU[@]}"; do
             for ((s = 0; s < k; s++)); do
-                local st=${stages[$(( (s + round - 1) % k ))]}
-                run "$RUN/gpu_nsweep/$st.csv" "gpu_nsweep/${st}_n${n}_r$round" "$NTHREADS_ALL" "build/$st" \
-                    --n "$n" "${SHAPE[@]}" "${PROTO[@]}"
+                local name bin extra
+                IFS='|' read -r name bin extra <<< "${entries[$(( (s + round - 1) % k ))]}"
+                local -a xa=()
+                [[ -n "$extra" ]] && read -r -a xa <<< "$extra"
+                run "$RUN/gpu_nsweep/$name.csv" "gpu_nsweep/${name}_n${n}_r$round" "$NTHREADS_ALL" "build/$bin" \
+                    --n "$n" "${SHAPE[@]}" "${PROTO[@]}" "${xa[@]}"
             done
         done
     done

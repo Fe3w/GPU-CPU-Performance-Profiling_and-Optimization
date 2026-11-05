@@ -12,8 +12,9 @@ the median SM clock / power / max temperature over those samples are shown.
 The first-rep column is rep 1's time relative to the mean of the other reps
 (a clock ramp-up shows up as a positive value).
 
-Groups by (stage, N) only, so use it for experiments where nothing else varies
-(the GPU N sweep); Br/Bc or thread sweeps would be mixed together.
+Groups by (CSV name, N) only, so use it for experiments where nothing else varies
+within one CSV (the GPU N sweep, where a second tile has its own CSV); Br/Bc or
+thread sweeps would be mixed together.
 
 Standard library only. Reads CSVs; never writes into the run folder.
 """
@@ -70,7 +71,11 @@ def load_command_starts(run, experiment):
             if not m:
                 continue
             exp = os.path.basename(os.path.dirname(m.group(4)))
-            starts.append((parse_ts(m.group(1)), os.path.basename(m.group(2)), int(m.group(3)), exp))
+            # Stage id = CSV basename (same key as the tables), so two tiles of one
+            # binary written to different CSVs are matched to their own samples.
+            sid = os.path.basename(m.group(4))
+            sid = sid[:-4] if sid.endswith(".csv") else sid
+            starts.append((parse_ts(m.group(1)), sid, int(m.group(3)), exp))
     return starts
 
 

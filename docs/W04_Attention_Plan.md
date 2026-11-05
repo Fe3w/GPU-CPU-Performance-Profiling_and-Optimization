@@ -1,7 +1,7 @@
 # W04 Plan: Fused Attention (Deep-Learning Workload)
 
 **Project:** GPU-CPU-Performance-Profiling_and-Optimization
-**Status:** P0–P2 done (CPU stages; GPU S1, S2a, REF_CUBLAS); P3 step 1 (S2b code and tests) done, sweep and E3 next. See `docs/W04_PROGRESS.md` for what is measured
+**Status:** P0–P3 done (CPU stages; GPU S1, S2a, REF_CUBLAS, S2b fused with E3 DRAM bytes); P4 (Tensor Core S3) next. See `docs/W04_PROGRESS.md` for what is measured
 **Hardware:** Intel Core i7-13650HX (6P+8E, AVX2/FMA) · RTX 4060 Laptop GPU (sm_89, 24 SMs, 8 GiB, 128-bit GDDR6)
 **Date:** 4 Nov 2026
 
@@ -40,7 +40,7 @@ The new lesson is **fusion**. In W01–W03, operational intensity (OI) is fixed 
 | Layout | Row-major `[BH][N][d]`, FP32 inputs (FP16 copies for S3) |
 | FLOPs (model) | `4·BH·N²·d` (two GEMMs); softmax counted separately as about `5·BH·N²` |
 | Minimum bytes | `4 tensors × BH·N·d × 4 B` (Q, K, V, O). **Algorithmic OI = N/4** (256 FLOP/B at N=1024) |
-| Naive bytes | Minimum plus about `4 × BH·N² × 4 B` (write S, read S, write P, read P). **OI ≈ d/4 ≈ 16 FLOP/B**, independent of N. As implemented (decision C17, P2): S2a/REF make 5 passes (≈ 20·BH·N² B, OI ≈ 12.8) and GPU S1 makes 7 (≈ 28·BH·N² B, OI ≈ 9.1), before L2 hits. P6 uses these counts |
+| Naive bytes | Minimum plus about `4 × BH·N² × 4 B` (write S, read S, write P, read P). **OI ≈ d/4 ≈ 16 FLOP/B**, independent of N. As implemented (decision C17, P2): S2a/REF make 5 passes at the L1/L2 level and GPU S1 makes 7. **Measured in DRAM (E3, P3):** S2a moves 4 passes (≈ 16·BH·N² B + Q, K, V, O, within 0–2.5%; OI ≈ 15) because the softmax's second read hits L2. P6 uses the measured DRAM count |
 
 The gap between those two OI values (≈16 → ≈256 at N=1024) is the headline quantity W04 measures.
 
@@ -88,7 +88,7 @@ All stages use the existing ID convention: `W04_ATTENTION_<CPU|GPU>_<S#>_<BASE|S
 |---|---|---|
 | E1 Runtime vs N, all stages | benchmark harness (20 iterations, 5 reps, 2 warmup) | log-log plot; S1 vs fused scaling |
 | E2 Speedups at N=1024 and 2048 | harness | factored bars: kernel quality × fusion × Tensor Core |
-| E3 **Measured DRAM bytes** | `ncu --metrics dram__bytes_read.sum,dram__bytes_write.sum` | measured OI per stage → **measured-traffic Roofline** (points move right) |
+| E3 **Measured DRAM bytes** | `ncu --metrics dram__bytes_read.sum,dram__bytes_write.sum,lts__t_bytes.sum` (P3 adds L2 bytes) | measured OI per stage → **measured-traffic Roofline** (points move right). Measured writes are a lower bound: lines still dirty in L2 at kernel end are not counted (P3: S2b at N=2048 shows 0 B written for 4 MB of O) |
 | E4 Kernel diagnosis | ncu sections: SpeedOfLight, MemoryWorkloadAnalysis, ComputeWorkloadAnalysis, Occupancy, WarpStateStats, SourceCounters | stall reasons (Barrier, MIO Throttle, Long Scoreboard), shared-memory bank conflicts, tensor-pipe utilization |
 | E5 Launch overhead | `nsys profile` on S1/S2a (3 kernels) vs S2b (1 kernel) | timeline gaps: first real use of Nsight Systems in the project |
 | E6 Peak memory vs N | `cudaMemGetInfo` before/after | O(N²) vs O(N) footprint plot |
@@ -104,7 +104,7 @@ All stages use the existing ID convention: `W04_ATTENTION_<CPU|GPU>_<S#>_<BASE|S
 
 Each one is confirmed or rejected with a specific counter.
 
-**Shared-memory budget (sm_89):** with FP32 and `Br = Bc = 64, d = 64`, the Q, K and V tiles take 48 KB, right at the default per-block limit. Start with `Bc = 32` or opt in to more with `cudaFuncSetAttribute`. In FP16 (S3) the same tiles take 24 KB.
+**Shared-memory budget (sm_89):** with FP32 and `Br = Bc = 64, d = 64`, the Q, K and V tiles take 48 KB, right at the default per-block limit. Start with `Bc = 32` or opt in to more with `cudaFuncSetAttribute`. In FP16 (S3) the same tiles take 24 KB. **As built in P3** (padding + a P̃ tile): 29,056 B at 32×32 (default limit) and 66,304 B at 64×64 (opt-in, 1 block per SM); 64×64 is nevertheless 1.4× faster at every N.
 
 ## 7. Files and harness (new code only in the clean project)
 

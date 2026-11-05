@@ -35,7 +35,7 @@ Measured on the hardware above (mean of 5 repetitions). W04 CPU numbers come fro
 | W03 GPU | ~3.5× faster (2.83 → 0.80 ms) | Shared-memory reuse, then Tensor Cores (`HMMA` verified in SASS) |
 | W04 CPU | ~62× faster at N=1024 (285.8 → 4.59 ms; 7.5 → 469 GFLOP/s) | Fusion + blocking (S1→S2 28.8×), then 8-wide FMA and a vector `exp` (S2→S3 2.2×), on 20 threads |
 | W04 GPU (unfused) | S1→S2a ~3.4× at N=1024 (7.63 → 2.23 ms); cuBLAS-based reference 0.75 ms | Tiled GEMMs and a warp-per-row softmax; S2a's GEMMs are limited by shared-memory loads. With cuBLAS GEMMs the N×N softmax becomes the largest kernel (46% at N=8192): the cost that fusion removes |
-| W04 GPU (fused) | *in progress, see status* | Fusion removes the N×N intermediate from DRAM |
+| W04 GPU (fused) | S2a→S2b 2.0–2.1× (32×32 tile) and 2.9–3.0× (64×64) at N=2048–8192; at N=4096: 38.75 → 18.77 / 13.33 ms. S2b 64×64 matches or beats the cuBLAS-based unfused reference from N=2048 | One kernel, no N×N intermediate: measured DRAM traffic drops ~33–42× at N=4096 (≈2.2 GB → 52–68 MB) and operational intensity rises from ~15 to 500–650 FLOP/B. The speedup also includes register-tiled inner GEMMs (fewer shared-memory loads per FMA), so it is not fusion alone |
 
 ## Status
 
@@ -45,7 +45,7 @@ Measured on the hardware above (mean of 5 repetitions). W04 CPU numbers come fro
 | W04 P0 | harness, double-precision reference, correctness tests | done |
 | W04 P1 | CPU attention S1–S3, compiler-flag study, 1–20 thread sweep, tile-size choice | done: S1→S3 62× at N=1024 (7.5 → 469 GFLOP/s); default tiles S2 64×64, S3 32×64 from a temperature-logged rerun |
 | W04 P2 | GPU S1, S2a unfused, cuBLAS reference | done: S1→S2a 3.3–4.3×; S2a reaches 31–38% of the cuBLAS-based reference (N=512–8192), with the GPU at its 55 W power limit |
-| W04 P3 | GPU S2b fused kernel | code and tests done (one FlashAttention-2-style FP32 kernel, online softmax, no N×N buffer: peak device memory grows linearly with N); sweep and DRAM-traffic measurements pending |
+| W04 P3 | GPU S2b fused kernel | done: one FlashAttention-2-style FP32 kernel (online softmax, no N×N buffer, peak device memory linear in N); faster than S2a at every N (1.5–2.1× at 32×32, 2.1–3.0× at 64×64, N=512–8192); DRAM bytes measured with Nsight Compute: ~21–42× fewer than S2a at N=2048–4096 |
 | W04 P4 | GPU S3 Tensor Core kernel | planned |
 | W04 P5 | autotuning | planned |
 | W04 P6 | profiling and plots | planned |
@@ -102,11 +102,17 @@ CPU tunable stages also accept `--br` and `--bc` (query and key/value tile sizes
 bash scripts/w04_sweep.sh cpu-all      # writes results/raw/W04_ATTENTION/<YYYYMMDD-HHMMSS>/
 ```
 
-GPU N sweep (S1, S2a, cuBLAS reference, S2b fused; 3 interleaved rounds with GPU clock, power and temperature logged), and a per-stage summary of a run folder:
+GPU N sweep (S1, S2a, cuBLAS reference, S2b fused at 32×32 and 64×64 tiles; 3 interleaved rounds with GPU clock, power and temperature logged), and a per-stage summary of a run folder:
 
 ```bash
 bash scripts/w04_sweep.sh gpu-nsweep
 python3 tools/w04_summary.py results/raw/W04_ATTENTION/<run folder>
+```
+
+Measured DRAM bytes and operational intensity from Nsight Compute raw-page CSV exports (one export per kernel, named `<stage>_<kernel or tile>_n<N>.raw.csv`):
+
+```bash
+python3 tools/w04_e3_oi.py <folder with .raw.csv exports>
 ```
 
 S2b tile size is selectable (`--br`, `--bc` in {16, 32, 64}), e.g.:
