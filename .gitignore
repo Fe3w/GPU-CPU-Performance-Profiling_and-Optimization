@@ -1,0 +1,42 @@
+# Build output
+build/
+bin/
+obj/
+cmake-build-*/
+*.o
+*.obj
+*.a
+*.so
+
+# Profiler reports (large, binary, machine-specific)
+*.ncu-rep
+*.ncu-repz
+*.nsys-rep
+*.qdrep
+*.qdstrm
+*.sqlite
+*.vtune
+r[0-9][0-9][0-9]*/
+
+# Media and archives
+*.mp4
+*.mkv
+*.zip
+*.tar
+*.tar.*
+*.tgz
+
+# Local-only copies of the above
+artifacts/
+
+# Editors / Python / OS
+.vscode/
+.idea/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+*.swp
+*~
+.DS_Store
+nohup.out
+core
