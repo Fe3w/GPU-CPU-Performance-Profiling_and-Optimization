@@ -7,7 +7,7 @@
 #   bash scripts/w04_sweep.sh cpu-threads   S2/S3 at T = 1..20, N = 1024, 2048
 #   bash scripts/w04_sweep.sh cpu-flags     compiler-flag study (build/flagstudy/)
 #   bash scripts/w04_sweep.sh cpu-all       all CPU experiments in one session folder
-#   bash scripts/w04_sweep.sh gpu-nsweep    runtime vs N, GPU S1/S2a/REF_CUBLAS/S2b (32x32, 64x64)
+#   bash scripts/w04_sweep.sh gpu-nsweep    runtime vs N, GPU S1/S2a/REF_CUBLAS/S2b (32x32, 64x64)/S3 (FP16, TF32)
 #
 # Output: results/raw/W04_ATTENTION/<YYYYMMDD-HHMMSS>/ (refused if it exists)
 #   run_info.txt  machine state at the start (CPU, caches, governor, power, GPU clocks)
@@ -51,6 +51,8 @@ G1=W04_ATTENTION_GPU_S1_BASE_NAIVE
 G2A=W04_ATTENTION_GPU_S2a_SWOPT_UNFUSED
 GREF=W04_ATTENTION_GPU_REF_CUBLAS
 G2B=W04_ATTENTION_GPU_S2b_SWOPT_FUSED
+G3H=W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16
+G3T=W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32
 NTHREADS_ALL=20   # also the host threads for the (untimed) double reference of GPU runs
 GPU_ROUNDS=${GPU_ROUNDS:-3}
 
@@ -253,9 +255,10 @@ gpu_nsweep() {
     start_gpu_sampler
     # Entries are "<name>|<binary>|<extra args>". The name is the CSV and log
     # name, so a second tile of the same binary gets its own summary row
-    # (decision C21: S2b at its default 32x32 tile and at 64x64).
+    # (decision C21: S2b at its default 32x32 tile and at 64x64). P4 adds the
+    # two S3 Tensor Core variants at their default 64x64 tile (C24).
     local entries=("$G1|$G1|" "$G2A|$G2A|" "$GREF|$GREF|" "$G2B|$G2B|"
-                   "${G2B}_64x64|$G2B|--br 64 --bc 64")
+                   "${G2B}_64x64|$G2B|--br 64 --bc 64" "$G3H|$G3H|" "$G3T|$G3T|")
     local k=${#entries[@]}
     for ((round = 1; round <= GPU_ROUNDS; round++)); do
         for n in "${NS_GPU[@]}"; do
@@ -275,7 +278,7 @@ gpu_nsweep() {
 # ------------------------------------------------------------------- main
 case "$CMD" in
     cpu-nsweep|cpu-tiles|cpu-threads|cpu-flags|cpu-all) NEED=("$S1" "$S2" "$S3") ;;
-    gpu-nsweep) NEED=("$G1" "$G2A" "$GREF" "$G2B") ;;
+    gpu-nsweep) NEED=("$G1" "$G2A" "$GREF" "$G2B" "$G3H" "$G3T") ;;
     *) usage ;;
 esac
 make --no-print-directory w04 >/dev/null

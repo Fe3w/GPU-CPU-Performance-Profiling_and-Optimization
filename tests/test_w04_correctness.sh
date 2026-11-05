@@ -12,12 +12,19 @@
 #      Every stage also runs n = 203, d = 40 (N not a multiple of any tile, d not
 #      a multiple of 16/64). Tunable stages also run ragged-tile cases
 #      (N not a multiple of Br/Bc, one with d = 40). Kind 1 = any Br/Bc (CPU);
-#      kind 2 = compiled tile set Br, Bc in {16, 32, 64} (GPU S2b): all 9 tiles
-#      at n = 203 plus one d = 40 case
-#   6. direct stage-vs-stage check: GPU S2b vs S2a at n = 1024 (O dumped via
-#      W04_DUMP_O, compared by tools/w04_compare_o.py, normwise rel <= 1e-4)
+#      kind 2 = compiled tile set Br, Bc in {16, 32, 64} (GPU S2b, S3): all 9
+#      tiles at n = 203 plus one d = 40 case
+#   6. direct stage-vs-stage checks at n = 1024 (O dumped via W04_DUMP_O,
+#      compared by tools/w04_compare_o.py, normwise rel): GPU S2b vs S2a
+#      (<= 1e-4); GPU S3 FP16 / TF32 vs S2b at 64x64 (<= the stage tolerance,
+#      1e-2 / 5e-3) on normal inputs. On large_logits the S3-vs-S2b difference
+#      is the input-rounding ("plain") error, which decision C2 reports but does
+#      not gate (decision C26), so it is printed as INFO only; S3 large_logits
+#      is gated against the rounded-input double reference in step 5
 #   7. machine-code evidence: CPU S3 must contain packed-single ymm FMAs; GPU
-#      S2b must use shared memory (LDS) and shuffles (SHFL), and no HMMA
+#      S2b must use shared memory (LDS) and shuffles (SHFL), and no HMMA; GPU
+#      S3 FP16 must contain HMMA.16816.F32 and no TF32 HMMA, S3 TF32 must
+#      contain HMMA.1684.F32.TF32 and no other HMMA form
 #
 # Output goes to build/test_out/<timestamp>/ (git-ignored), never to results/.
 # Must finish in under 60 s.
@@ -75,6 +82,8 @@ STAGES=(
     "W04_ATTENTION_GPU_S2a_SWOPT_UNFUSED 0"
     "W04_ATTENTION_GPU_REF_CUBLAS 0"
     "W04_ATTENTION_GPU_S2b_SWOPT_FUSED 2"
+    "W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 2"
+    "W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 2"
 )
 
 echo "== stages (${#STAGES[@]} registered) =="
@@ -140,6 +149,37 @@ else
     bad "S2b vs S2a comparison (binary missing)"
 fi
 
+echo "== S3 vs S2b 64x64 (n=1024, direct O comparison, stage tolerance) =="
+G3_FP16_BIN=build/W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16
+G3_TF32_BIN=build/W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32
+if [[ -x "$G2B_BIN" && -x "$G3_FP16_BIN" && -x "$G3_TF32_BIN" ]]; then
+    for input in normal large_logits; do
+        ref="$OUT/O_S2b_64x64_n1024_${input}.bin"
+        W04_DUMP_O="$ref" run_check "S2b 64x64 n=1024 $input (dump O)" "$OUT/S2b_64x64_n1024_${input}.log" \
+            "$G2B_BIN" --n 1024 --bh 2 --d 64 --br 64 --bc 64 --iters 1 --reps 1 --warmup 0 --input "$input" \
+            --out "$OUT/S2b_64x64.csv"
+        for pair in "FP16 $G3_FP16_BIN 1e-2" "TF32 $G3_TF32_BIN 5e-3"; do
+            read -r prec b tol <<<"$pair"
+            nm=$(basename "$b")
+            W04_DUMP_O="$OUT/O_${nm}_n1024_${input}.bin" run_check "$nm n=1024 $input (dump O)" \
+                "$OUT/${nm}_n1024_${input}.log" \
+                "$b" --n 1024 --bh 2 --d 64 --iters 1 --reps 1 --warmup 0 --input "$input" --out "$OUT/${nm}.csv"
+            cmplog="$OUT/cmp_s3_${prec}_s2b_n1024_${input}.log"
+            if [[ "$input" == normal ]]; then
+                run_check "S3 $prec vs S2b 64x64 n=1024 $input (normwise rel <= $tol)" "$cmplog" \
+                    python3 tools/w04_compare_o.py "$OUT/O_${nm}_n1024_${input}.bin" "$ref" --tol "$tol"
+                grep -E '^compare' "$cmplog" | sed 's/^/      /' || true
+            else
+                python3 tools/w04_compare_o.py "$OUT/O_${nm}_n1024_${input}.bin" "$ref" --tol "$tol" >"$cmplog" 2>&1 || true
+                echo "  INFO  S3 $prec vs S2b 64x64 n=1024 $input (input rounding, not gated, C26):" \
+                    "$(grep -E '^compare' "$cmplog" | sed -E 's/.*(max_rel\(normwise\)=[^ ]+).*/\1/')"
+            fi
+        done
+    done
+else
+    bad "S3 vs S2b comparison (binary missing)"
+fi
+
 echo "== machine code =="
 S3_BIN=build/W04_ATTENTION_CPU_S3_HWACC_AVX2
 if [[ -x "$S3_BIN" ]]; then
@@ -156,6 +196,17 @@ if [[ -x "$G2B_BIN" ]]; then
         ok "GPU S2b SASS: $nlds LDS, $nshfl SHFL, 0 HMMA (SIMT FP32, shared-memory tiles, shuffle reductions)"
     else bad "GPU S2b SASS: LDS=$nlds SHFL=$nshfl HMMA=$nhmma (expected LDS>0, SHFL>0, HMMA=0)"; fi
 fi
+# S3: each variant must use its own Tensor Core instruction and no other HMMA form.
+for pair in "FP16 HMMA.16816.F32" "TF32 HMMA.1684.F32.TF32"; do
+    read -r prec want <<<"$pair"
+    b="build/W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_$prec"
+    [[ -x "$b" ]] || { bad "GPU S3 $prec SASS (binary missing)"; continue; }
+    forms=$(cuobjdump -sass "$b" | grep -oE 'HMMA\.[A-Z0-9.]+' | sort | uniq -c | awk '{printf "%s %s; ", $2, $1}')
+    nwant=$(cuobjdump -sass "$b" | grep -oE 'HMMA\.[A-Z0-9.]+' | grep -cxF "$want" || true)
+    nother=$(cuobjdump -sass "$b" | grep -oE 'HMMA\.[A-Z0-9.]+' | grep -cvxF "$want" || true)
+    if (( nwant > 0 && nother == 0 )); then ok "GPU S3 $prec SASS: ${forms}(only $want)"
+    else bad "GPU S3 $prec SASS: ${forms:-no HMMA} (expected $want only)"; fi
+done
 
 ELAPSED=$((SECONDS - START))
 [[ -n "$WARNINGS" ]] && echo "$WARNINGS"

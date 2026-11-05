@@ -2,7 +2,14 @@
 // W04 ATTENTION — append-only CSV writer and result reporting (P0)
 //
 // * One row per repetition. Schema = plan §7 plus five columns approved in P0
-//   (seed, input_case, warmup, reps, threads), appended at the end.
+//   (seed, input_case, warmup, reps, threads) and two added in P4 (decision
+//   C23), appended at the end:
+//     prep_ms          time of the stage's untimed preparation step (FP16
+//                      conversion of Q, K, V in GPU S3), same protocol, per
+//                      rep; empty for stages without one
+//     max_rel_err_main the error that decides `correct` (large_logits with a
+//                      reduced-precision stage: reference on the rounded
+//                      inputs, decision C2); equals max_rel_err otherwise
 // * The file is opened in append mode and never truncated (W03 used
 //   std::ofstream(path), which truncates). The header is written only into an
 //   empty file; a non-empty file with a different header is rejected.
@@ -60,12 +67,16 @@ struct W04Row {
     std::string input_case;
     int warmup = 0, reps = 0;
     int threads = 0;          // host threads used by the timed stage; 0 = n/a (GPU)
+    // P4 additions (C23)
+    bool has_prep = false;    // false -> prep_ms is written as an empty field
+    double prep_ms = 0;
+    double max_rel_err_main = 0;
 };
 
 inline const char* w04_csv_header() {
     return "workload,stage,variant,device,precision,n,bh,d,iters,rep,runtime_ms,gflops,alg_bytes,"
            "max_abs_err,max_rel_err,correct,peak_mem_bytes,br,bc,compiler_flags,timestamp,git_sha,"
-           "seed,input_case,warmup,reps,threads";
+           "seed,input_case,warmup,reps,threads,prep_ms,max_rel_err_main";
 }
 
 inline std::string csv_field(const std::string& s) {
@@ -114,7 +125,8 @@ public:
              << csv_num(r.max_rel_err) << ',' << (r.correct ? "YES" : "NO") << ',' << r.peak_mem_bytes
              << ',' << r.br << ',' << r.bc << ',' << csv_field(r.compiler_flags) << ','
              << csv_field(r.timestamp) << ',' << csv_field(r.git_sha) << ',' << r.seed << ','
-             << csv_field(r.input_case) << ',' << r.warmup << ',' << r.reps << ',' << r.threads << '\n';
+             << csv_field(r.input_case) << ',' << r.warmup << ',' << r.reps << ',' << r.threads << ','
+             << (r.has_prep ? csv_num(r.prep_ms) : std::string()) << ',' << csv_num(r.max_rel_err_main) << '\n';
         out_.flush();
         if (!out_) throw std::runtime_error("write failed: " + path_);
     }
@@ -153,9 +165,13 @@ struct StageMeta {
 // Prints the correctness details, the one-line summary and the exact
 // "Correct : YES|NO" line the test greps for; appends one CSV row per rep.
 // Returns the process exit code (0 only if correct).
+// prep_ms: per-rep times of an untimed preparation step (nullptr = none); must
+// have one entry per rep if given.
 inline int report_and_write(const StageMeta& m, const BenchArgs& a, const std::vector<double>& rep_ms,
                             const CheckResult& chk, std::uint64_t peak_mem_bytes, int threads,
-                            int br = 0, int bc = 0) {
+                            int br = 0, int bc = 0, const std::vector<double>* prep_ms = nullptr) {
+    if (prep_ms != nullptr && prep_ms->size() != rep_ms.size())
+        throw std::runtime_error("report_and_write: prep_ms needs one entry per rep");
     const AttnShape s = a.shape();
     double mean = 0, sd = 0;
     for (double t : rep_ms) mean += t;
@@ -197,6 +213,9 @@ inline int report_and_write(const StageMeta& m, const BenchArgs& a, const std::v
         row.timestamp = ts;
         row.seed = a.seed; row.input_case = to_string(a.input);
         row.warmup = a.warmup; row.reps = a.reps; row.threads = threads;
+        row.has_prep = prep_ms != nullptr;
+        if (row.has_prep) row.prep_ms = (*prep_ms)[r];
+        row.max_rel_err_main = chk.main.max_rel_err;
         w.append(row);
     }
     std::printf("csv     : %s\n", path.c_str());

@@ -396,7 +396,8 @@ static void test_csv(const std::string& dir) {
         CHECK(lines[2].find("W04_ATTENTION,S0_TEST,") == 0, "row content");
     }
     const std::vector<std::string> header = split_csv(w04_csv_header());
-    CHECK(header.size() == 27, "schema has %zu columns, expected 22 (plan) + 5 (P0)", header.size());
+    CHECK(header.size() == 29, "schema has %zu columns, expected 22 (plan) + 5 (P0) + 2 (P4)", header.size());
+    CHECK(col(header, "prep_ms") == 27 && col(header, "max_rel_err_main") == 28, "P4 columns at the end");
     CHECK(col(header, "timestamp") == 20 && col(header, "git_sha") == 21 && col(header, "compiler_flags") == 19,
           "timestamp/git_sha/compiler_flags column positions");
     if (lines.size() == 3) {
@@ -444,7 +445,9 @@ static void test_csv(const std::string& dir) {
         bool ok = rows.size() == 3;
         for (std::size_t r = 0; ok && r < rows.size(); ++r) {
             const auto& f = rows[r];
-            ok &= f.size() == 27 && fld(f, header, "rep") == std::to_string(r + 1) &&
+            ok &= f.size() == 29 && fld(f, header, "rep") == std::to_string(r + 1) &&
+                  fld(f, header, "prep_ms").empty() &&
+                  std::stod(fld(f, header, "max_rel_err_main")) == std::stod(csv_num(chk.main.max_rel_err)) &&
                   fld(f, header, "stage") == "S0_TEST" && fld(f, header, "device") == "CPU" &&
                   fld(f, header, "precision") == "FP32" && fld(f, header, "n") == "64" &&
                   fld(f, header, "iters") == "4" && fld(f, header, "reps") == "3" && fld(f, header, "warmup") == "1" &&
@@ -459,6 +462,27 @@ static void test_csv(const std::string& dir) {
             CHECK(std::stod(fld(rows[0], header, "runtime_ms")) == 1.0 &&
                       std::stod(fld(rows[2], header, "runtime_ms")) == 2.0,
                   "report: runtime_ms per rep");
+
+        // With a preparation step: prep_ms carries one value per rep; a size mismatch is refused.
+        const std::vector<double> prep = {0.25, 0.5, 0.75};
+        a.out = dir + "/nested/report_prep.csv";
+        const int rc2 = report_and_write(meta, a, {1.0, 1.5, 2.0}, chk, 12345, 7, 32, 64, &prep);
+        std::ifstream pin(a.out);
+        std::vector<std::vector<std::string>> prow;
+        std::getline(pin, l);
+        while (std::getline(pin, l)) prow.push_back(split_csv(l));
+        bool pok = rc2 == 0 && prow.size() == 3;
+        for (std::size_t r = 0; pok && r < prow.size(); ++r)
+            pok &= prow[r].size() == 29 && std::stod(fld(prow[r], header, "prep_ms")) == prep[r];
+        CHECK(pok, "report: prep_ms per rep");
+        bool threw3 = false;
+        const std::vector<double> short_prep = {0.25};
+        try {
+            report_and_write(meta, a, {1.0, 1.5, 2.0}, chk, 12345, 7, 32, 64, &short_prep);
+        } catch (const std::exception&) {
+            threw3 = true;
+        }
+        CHECK(threw3, "report: prep_ms with the wrong number of reps must be refused");
     }
 
     const std::string other = dir + "/nested/other.csv";

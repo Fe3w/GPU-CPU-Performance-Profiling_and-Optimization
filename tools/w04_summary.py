@@ -11,6 +11,9 @@ samples taken between its start (commands.log) and the next run's start, and
 the median SM clock / power / max temperature over those samples are shown.
 The first-rep column is rep 1's time relative to the mean of the other reps
 (a clock ramp-up shows up as a positive value).
+If a CSV has a non-empty prep_ms column (P4, decision C23: the untimed FP16
+conversion of GPU S3), a second table shows the median prep time per (stage, N),
+its size relative to runtime_ms, and runtime + prep.
 
 Groups by (CSV name, N) only, so use it for experiments where nothing else varies
 within one CSV (the GPU N sweep, where a second tile has its own CSV); Br/Bc or
@@ -97,6 +100,7 @@ def main():
             continue
         # (stage_id, n) -> {timestamp: [(rep, ms)]}
         runs = defaultdict(lambda: defaultdict(list))
+        prep = defaultdict(lambda: defaultdict(list))  # same keys; only rows with a prep_ms value
         flops = {}
         for path in csvs:
             sid = os.path.basename(path)[:-4]
@@ -104,6 +108,8 @@ def main():
                 for r in csv.DictReader(f):
                     key = (sid, int(r["n"]))
                     runs[key][r["timestamp"]].append((int(r["rep"]), float(r["runtime_ms"])))
+                    if r.get("prep_ms"):
+                        prep[key][r["timestamp"]].append(float(r["prep_ms"]))
                     flops[key] = 4.0 * int(r["bh"]) * int(r["n"]) ** 2 * int(r["d"])
 
         # match runs to their sampling windows, in execution order
@@ -123,7 +129,8 @@ def main():
                                            max(g[3] for g in smp))
 
         print(f"\n== {exp} ({run}) ==")
-        hdr = f"{'stage':<38} {'N':>5} {'runs':>4} {'median ms':>11} {'GFLOP/s':>8} {'spread%':>8} {'repSD%':>7} {'rep1%':>6}"
+        wid = max([38] + [len(k[0]) for k in runs])
+        hdr = f"{'stage':<{wid}} {'N':>5} {'runs':>4} {'median ms':>11} {'GFLOP/s':>8} {'spread%':>8} {'repSD%':>7} {'rep1%':>6}"
         if window:
             hdr += f" {'SM MHz':>7} {'W':>5} {'Tmax':>5}"
         print(hdr)
@@ -143,7 +150,7 @@ def main():
             med = st.median(per_run)
             med_by[key] = med
             spread = 100 * (max(per_run) - min(per_run)) / med
-            line = (f"{sid:<38} {n:>5} {len(per_run):>4} {med:>11.4f} {flops[key] / med / 1e6:>8.1f} "
+            line = (f"{sid:<{wid}} {n:>5} {len(per_run):>4} {med:>11.4f} {flops[key] / med / 1e6:>8.1f} "
                     f"{spread:>8.1f} {st.mean(sds) if sds else 0:>7.1f} {st.mean(rep1) if rep1 else 0:>6.1f}")
             if window:
                 w = [window[(sid, n, k)] for k in range(len(per_run)) if (sid, n, k) in window]
@@ -151,6 +158,14 @@ def main():
                     line += (f" {st.median(x[0] for x in w):>7.0f} {st.median(x[1] for x in w):>5.1f}"
                              f" {max(x[2] for x in w):>5.0f}")
             print(line)
+
+        if prep:
+            print(f"\n  prepare step (prep_ms, not included in runtime_ms), median over runs:")
+            print(f"  {'stage':<{wid}} {'N':>5} {'prep ms':>9} {'% of run':>8} {'run+prep ms':>11}")
+            for key in sorted(prep, key=lambda k: (k[1], k[0])):
+                pm = st.median(st.mean(v) for v in prep[key].values())
+                print(f"  {key[0]:<{wid}} {key[1]:>5} {pm:>9.4f} {100 * pm / med_by[key]:>8.1f} "
+                      f"{med_by[key] + pm:>11.4f}")
 
         # ratios between stages at the same N (median of run means)
         ns = sorted({n for _, n in med_by})

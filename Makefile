@@ -30,7 +30,7 @@ W04_GPU_SRCS := $(wildcard src/gpu/W04_ATTENTION/*.cu)
 W04_CPU_BINS := $(patsubst src/cpu/W04_ATTENTION/%.cpp,$(BUILD)/%,$(W04_CPU_SRCS))
 W04_GPU_BINS := $(patsubst src/gpu/W04_ATTENTION/%.cu,$(BUILD)/%,$(W04_GPU_SRCS))
 W04_SELFTESTS := $(BUILD)/W04_ATTENTION_SELFTEST $(BUILD)/W04_ATTENTION_SELFTEST_GPU $(BUILD)/W04_EXP_AVX2_TEST
-W04_HEADERS  := $(wildcard src/common/*.hpp src/common/*.cuh) $(BUILD)/w04_build_info.h
+W04_HEADERS  := $(wildcard src/common/*.hpp src/common/*.cuh src/gpu/W04_ATTENTION/*.cuh) $(BUILD)/w04_build_info.h
 
 # ---- per-stage flags (decisions recorded in docs/W04_PROGRESS.md) ----------
 # CPU S1: -O2, as in the plan (decision C5); the -O3 / -march=native /
