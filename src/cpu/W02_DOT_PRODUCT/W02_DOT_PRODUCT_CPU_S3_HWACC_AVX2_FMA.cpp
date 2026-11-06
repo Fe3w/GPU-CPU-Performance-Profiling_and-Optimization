@@ -1,3 +1,6 @@
+// W02 Dot Product, CPU S3 HWACC: OpenMP + AVX2/FMA, FP32 accumulation in
+// 8-lane vector registers per thread (0.018 % off the double sum at T = 6).
+// Correct = |s - s_double| / s_double <= 0.1 % (the same check for every W02 stage).
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -127,6 +130,7 @@ int main(int argc, char** argv)
          << "compiler,compiler_flags\n";
 
     float final_result = 0.0f;
+    bool all_correct = true;
 
     for (int rep = 1; rep <= repetitions; ++rep) {
 
@@ -160,7 +164,8 @@ int main(int argc, char** argv)
             : 0.0;
 
         const bool execution_valid =
-            std::isfinite(static_cast<double>(final_result));
+            std::isfinite(static_cast<double>(final_result)) && relative_error_pct <= 0.1;
+        all_correct = all_correct && execution_valid;
 
         file << "W02_DOT_PRODUCT_CPU_S3_HWACC_AVX2_FMA_T"
              << threads
@@ -198,6 +203,7 @@ int main(int argc, char** argv)
     std::cout << "Operational Intensity: "
               << operational_intensity << " FLOP/Byte\n";
     std::cout << "Final result        : " << final_result << '\n';
+    std::cout << "Correct             : " << (all_correct ? "YES" : "NO") << '\n';
 
-    return 0;
+    return all_correct ? EXIT_SUCCESS : EXIT_FAILURE;
 }

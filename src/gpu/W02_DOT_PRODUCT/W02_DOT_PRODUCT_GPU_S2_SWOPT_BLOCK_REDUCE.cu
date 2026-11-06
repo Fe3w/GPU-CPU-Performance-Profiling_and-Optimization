@@ -415,9 +415,10 @@ int main(int argc, char* argv[]) {
             final_result,
             reference_result);
 
-    // Validation is against the double-precision mathematical reference.
+    // Validation is against the double-precision mathematical reference
+    // (same check for every W02 stage: relative error <= 0.1 %).
     const bool correct =
-        error_vs_double_pct < 0.1;
+        std::isfinite(static_cast<double>(final_result)) && error_vs_double_pct <= 0.1;
 
     std::ofstream file(output_path);
 
@@ -431,7 +432,7 @@ int main(int argc, char* argv[]) {
 
     file << "experiment_id,workload,platform,stage,variant,"
          << "N,threads,iterations,repetitions,warmup,"
-         << "block_size,runtime_ms,gflops,bandwidth_gbs,"
+         << "block_size,runtime_ms,runtime_sd_ms,gflops,bandwidth_gbs,"
          << "operational_intensity,result,fp32_reference,"
          << "double_reference,error_vs_fp32_pct,"
          << "error_vs_double_pct,execution_valid,"
@@ -447,6 +448,7 @@ int main(int argc, char* argv[]) {
          << warmup << ","
          << BLOCK_SIZE << ","
          << mean_time << ","
+         << std_time << ","
          << mean_gflops << ","
          << mean_bandwidth << ","
          << OPERATIONAL_INTENSITY << ","

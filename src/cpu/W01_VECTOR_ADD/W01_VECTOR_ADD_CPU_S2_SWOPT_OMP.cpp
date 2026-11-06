@@ -238,7 +238,7 @@ int main(int argc, char** argv) {
             << operational_intensity << ","
             << (correct ? 1 : 0) << ","
             << "\"G++ " << __VERSION__ << "\","
-            << "\"-O0 -std=c++17 -g -fopenmp\""
+            << "\"-O3 -std=c++17 -g -fopenmp -fno-tree-vectorize -fno-tree-slp-vectorize\""
             << "\n";
 
         // --------------------------------------------------------

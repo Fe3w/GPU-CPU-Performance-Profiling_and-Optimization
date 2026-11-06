@@ -1,7 +1,7 @@
 # W04 Plan: Fused Attention (Deep-Learning Workload)
 
 **Project:** GPU-CPU-Performance-Profiling_and-Optimization
-**Status:** P0–P3 done (CPU stages; GPU S1, S2a, REF_CUBLAS, S2b fused with E3 DRAM bytes); P4 (Tensor Core S3, FP16 and TF32) done 6 Nov 2026 (decisions C22–C26; H3 verdict in PROGRESS); P5 (autotune E7 + GPU fast-math study) planned 6 Nov 2026 (decisions C27–C31: warps axis, `--warps` + 30-column CSV, tuned-defaults header) done 6 Nov 2026: tuned defaults in `src/common/w04_tuned.hpp`, results in PROGRESS; P6 (profiling E3–E6, E8, plots) planned 6 Nov 2026 (decisions C32–C36, PROGRESS "P6 plan") done 6 Nov 2026: H1 rejected, H2 and H3 partly supported, H4 not supported (verdict table in PROGRESS "P6 step 3 — data, part 2"). P7 (demo integration) planned and done 6 Nov 2026 (decisions C37–C43, PROGRESS "P7"; machine-specific demo paths kept, so the demo kit stays private). See `docs/W04_PROGRESS.md` for what is measured
+**Status:** P0–P3 done (CPU stages; GPU S1, S2a, REF_CUBLAS, S2b fused with E3 DRAM bytes); P4 (Tensor Core S3, FP16 and TF32) done 6 Nov 2026 (decisions C22–C26; H3 verdict in PROGRESS); P5 (autotune E7 + GPU fast-math study) planned 6 Nov 2026 (decisions C27–C31: warps axis, `--warps` + 30-column CSV, tuned-defaults header) done 6 Nov 2026: tuned defaults in `src/common/w04_tuned.hpp`, results in PROGRESS; P6 (profiling E3–E6, E8, plots) planned 6 Nov 2026 (decisions C32–C36, PROGRESS "P6 plan") done 6 Nov 2026: H1 rejected, H2 and H3 partly supported, H4 not supported (verdict table in PROGRESS "P6 step 3 — data, part 2"). P7 (demo integration) planned and done 6 Nov 2026 (decisions C37–C43, PROGRESS "P7"; machine-specific demo paths kept, so the demo kit stays private). P8 (final re-test + release README) planned and done 6 Nov 2026 (decisions C44–C54, PROGRESS "P8"; results in `docs/RESULTS_SUMMARY.md`). See `docs/W04_PROGRESS.md` for what is measured
 **Hardware:** Intel Core i7-13650HX (6P+8E, AVX2/FMA) · RTX 4060 Laptop GPU (sm_89, 24 SMs, 8 GiB, 128-bit GDDR6)
 **Date:** 4 Nov 2026
 
@@ -145,6 +145,7 @@ Lessons from W01–W03 built in: one CLI for every binary (no positional/named m
 | P5 | Autotune (E7), optional S4 Triton / SDPA | selected configuration recorded |
 | P6 | Profiling E3–E6, E8, plots | each hypothesis H1–H4 marked supported or rejected, with the metric |
 | P7 | Add W04 to the demo kit race and `plot_race.py`; update docs | `./demo.sh race` shows W04 |
+| P8 | Final paired re-test of W01–W04 (`scripts/run_all.sh`), consolidated results, release README | one session, every stage Correct YES/NO, `docs/RESULTS_SUMMARY.md`, README commands verified from a fresh clone |
 
 **Commits (clean private repo):**
 1. `feat(w04): attention harness, reference and correctness tests`

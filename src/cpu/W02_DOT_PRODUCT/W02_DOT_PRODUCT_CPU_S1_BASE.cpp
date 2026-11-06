@@ -1,3 +1,8 @@
+// W02 Dot Product, CPU S1 BASE: one scalar loop, -O0.
+// The sum is accumulated in double (FP32 inputs). A single FP32 accumulator
+// over 33.5 M products loses 6.75 % of the result once the running sum is
+// large, which fails the correctness check below; the double accumulator is the
+// simplest correct baseline. Correct = |s - s_double| / s_double <= 0.1 %.
 #include <chrono>
 #include <algorithm>
 #include <cmath>
@@ -36,14 +41,14 @@ int main(int argc, char** argv)
         B[i] = static_cast<float>((i * 3) % 1000) * 0.001f;
     }
 
-    volatile float sink = 0.0f;
+    volatile double sink = 0.0;
 
     // Warm-up
     for (int w = 0; w < warmup; ++w) {
-        float sum = 0.0f;
+        double sum = 0.0;
 
         for (std::size_t i = 0; i < N; ++i) {
-            sum += A[i] * B[i];
+            sum += static_cast<double>(A[i]) * static_cast<double>(B[i]);
         }
 
         sink = sum;
@@ -77,19 +82,21 @@ int main(int argc, char** argv)
         << "reference_result,relative_error_pct,execution_valid,"
         << "compiler,compiler_flags\n";
 
+    bool all_correct = true;
+
     for (int rep = 1; rep <= repetitions; ++rep) {
 
-        float final_result = 0.0f;
+        double final_result = 0.0;
 
         auto start =
             std::chrono::steady_clock::now();
 
         for (int it = 0; it < iterations; ++it) {
 
-            float sum = 0.0f;
+            double sum = 0.0;
 
             for (std::size_t i = 0; i < N; ++i) {
-                sum += A[i] * B[i];
+                sum += static_cast<double>(A[i]) * static_cast<double>(B[i]);
             }
 
             final_result = sum;
@@ -122,16 +129,20 @@ int main(int argc, char** argv)
                 static_cast<double>(B[i]);
         }
 
-        // Float accumulation and double reference will differ slightly.
+    // Correct = relative error vs the double-precision sum <= 0.1 %
+    // (the same check for every W02 stage).
+        const double relative_error_pct =
+            (reference != 0.0)
+            ? std::fabs((final_result - reference) / reference) * 100.0
+            : 0.0;
         const bool correct =
-            std::fabs(static_cast<double>(final_result) -
-                      reference) <=
-            std::max(1.0, std::fabs(reference)) * 1e-4;
+            std::isfinite(final_result) && relative_error_pct <= 0.1;
+        all_correct = all_correct && correct;
 
         file << "W02_DOT_PRODUCT_CPU_S1_BASE_R"
              << std::setfill('0') << std::setw(2) << rep
              << std::setfill(' ')
-             << ",W02_DOT_PRODUCT,CPU,S1_BASE,O0_SCALAR,"
+             << ",W02_DOT_PRODUCT,CPU,S1_BASE,O0_SCALAR_F64ACC,"
              << N << ","
              << 1 << ","
              << iterations << ","
@@ -144,6 +155,8 @@ int main(int argc, char** argv)
              << algorithmic_bytes << ","
              << operational_intensity << ","
              << final_result << ","
+             << reference << ","
+             << relative_error_pct << ","
              << (correct ? "YES" : "NO") << ","
              << "g++,"
              << "\"-O0 -std=c++17 -g\"\n";
@@ -158,7 +171,8 @@ int main(int argc, char** argv)
     std::cout << "Operational Intensity: "
               << operational_intensity
               << " FLOP/Byte\n";
-    std::cout << "Final result       : " << sink << '\n';
+    std::cout << "Final result       : " << std::setprecision(12) << sink << '\n';
+    std::cout << "Correct            : " << (all_correct ? "YES" : "NO") << '\n';
 
-    return EXIT_SUCCESS;
+    return all_correct ? EXIT_SUCCESS : EXIT_FAILURE;
 }

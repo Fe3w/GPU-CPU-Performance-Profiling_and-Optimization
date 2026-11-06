@@ -142,7 +142,13 @@ $(FS_DIR)/$(GFS_S2B).fastmath: src/gpu/W04_ATTENTION/$(GFS_S2B).cu $(W04_HEADERS
 # compiler flags into its CSV as a fixed string; the flags below are exactly
 # those strings, so the CSV column stays true. Exception: W03 CPU S2/S3 add
 # -DGEMM_BLOCK_SIZE=128, the tile used for the recorded W03 results (B128),
-# which their flag string does not mention. Superseded *_v1.cpp files and the
+# which their flag string does not mention. Second exception: W01 GPU S1 adds
+# -gencode arch=compute_89,code=sm_89. Without it nvcc 13 embeds only PTX, which
+# a driver older than the toolkit refuses to load ("PTX was compiled with an
+# unsupported toolchain"); its CSV flag string still reads "-O3 -std=c++17
+# -lineinfo". W01 CPU S2/S3 use -O3, the flags of the binaries that produced
+# the recorded W01 results (read from their DWARF producer string); their
+# sources' flag strings said -O0 until P8 and were corrected. Superseded *_v1.cpp files and the
 # non-stage files in src/cpu/ are not built.
 L_CPU_O0     := -O0 -std=c++17 -g
 L_CPU_O3     := -O3 -fopenmp -fno-tree-vectorize -fno-tree-slp-vectorize -std=c++17 -g
@@ -160,15 +166,15 @@ w03: $(W03_BINS)
 legacy: w01 w02 w03
 
 $(BUILD)/W01_VECTOR_ADD_CPU_S1_BASE:          L_FLAGS := -O0 -std=c++17 -g
-$(BUILD)/W01_VECTOR_ADD_CPU_S2_SWOPT_OMP:     L_FLAGS := -O0 -std=c++17 -g -fopenmp
-$(BUILD)/W01_VECTOR_ADD_CPU_S3_HWACC_AVX2:    L_FLAGS := -O0 -std=c++17 -g -fopenmp -mavx2
+$(BUILD)/W01_VECTOR_ADD_CPU_S2_SWOPT_OMP:     L_FLAGS := -O3 -std=c++17 -g -fopenmp -fno-tree-vectorize -fno-tree-slp-vectorize
+$(BUILD)/W01_VECTOR_ADD_CPU_S3_HWACC_AVX2:    L_FLAGS := -O3 -std=c++17 -g -fopenmp -mavx2
 $(BUILD)/W02_DOT_PRODUCT_CPU_S1_BASE:         L_FLAGS := $(L_CPU_O0)
 $(BUILD)/W02_DOT_PRODUCT_CPU_S2_SWOPT_OMP:    L_FLAGS := $(L_CPU_O3)
 $(BUILD)/W02_DOT_PRODUCT_CPU_S3_HWACC_AVX2_FMA: L_FLAGS := -O3 -mavx2 -mfma -fopenmp -fno-tree-vectorize -fno-tree-slp-vectorize -std=c++17 -g
 $(BUILD)/W03_GEMM_CPU_S1_BASE:                L_FLAGS := $(L_CPU_O0)
 $(BUILD)/W03_GEMM_CPU_S2_SWOPT_CACHE_BLOCK:   L_FLAGS := $(L_CPU_O3) -DGEMM_BLOCK_SIZE=128
 $(BUILD)/W03_GEMM_CPU_S3_HWACC_AVX2_FMA:      L_FLAGS := -O3 -fopenmp -mavx2 -mfma -fno-tree-vectorize -fno-tree-slp-vectorize -std=c++17 -g -DGEMM_BLOCK_SIZE=128
-$(BUILD)/W01_VECTOR_ADD_GPU_S1_BASE_NAIVE:    L_FLAGS := -O3 -std=c++17 -lineinfo
+$(BUILD)/W01_VECTOR_ADD_GPU_S1_BASE_NAIVE:    L_FLAGS := -O3 -std=c++17 -lineinfo -gencode arch=compute_89,code=sm_89
 $(BUILD)/W01_VECTOR_ADD_GPU_S2_SWOPT_COALESCED: L_FLAGS := -O3 -std=c++17 -lineinfo -gencode arch=compute_89,code=sm_89
 $(BUILD)/W02_DOT_PRODUCT_GPU_%:               L_FLAGS := $(L_GPU)
 $(BUILD)/W03_GEMM_GPU_%:                      L_FLAGS := $(L_GPU)

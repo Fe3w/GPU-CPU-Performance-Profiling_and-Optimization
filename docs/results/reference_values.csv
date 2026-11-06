@@ -1,0 +1,37 @@
+key,mean_ms,sd_ms,rows,source,date,note,primary
+W01_CPU_S1,100.8082,0.7402,5,results/raw/W01_VECTOR_ADD/W01_VECTOR_ADD_CPU_S1_BASE.csv,2026-10-02,,1
+W01_CPU_S2,8.0596,0.0483,5,results/raw/W01_VECTOR_ADD/W01_VECTOR_ADD_CPU_S2_SWOPT_OMP_T6.csv,2026-10-02,T=6,1
+W01_CPU_S3,7.9517,0.1624,5,results/raw/W01_VECTOR_ADD/W01_VECTOR_ADD_CPU_S3_HWACC_AVX2_T6.csv,2026-10-02,T=6,1
+W01_GPU_S1,1.7154,0.0284,5,results/demo/csv/W01_S1.csv,2026-10-21,"5 per-rep rows, B256, 234.8 GB/s; 6% faster than this run: a different session, memory clock not logged",1
+W01_GPU_S2,1.699,0.0142,5,results/demo/csv/W01_S2.csv,2026-10-21,"5 per-rep rows, B128, 237.0 GB/s; 7% faster than this run: a different session, memory clock not logged",1
+W01_GPU_S1,35.1264,0,1,results/raw/W01_VECTOR_ADD/W01_VECTOR_ADD_GPU_S1_BASE_NAIVE.csv,2026-10-02,"one row, repetition 1 only, 11 GB/s: 19x slower than every other W01 GPU record, so not a DRAM-limited run (cause unknown); not used",0
+W01_GPU_S2,1.8589,0.1234,5,results/raw/W01_VECTOR_ADD/W01_VECTOR_ADD_GPU_S2_SWOPT_COALESCED_B128.csv,2026-10-02,"5 per-rep rows: rep 1 2.08 ms, reps 2-5 1.80-1.82 ms, the memory-clock ramp seen in run 20261106-134741",0
+W02_CPU_S1,56.2386,0.2599,5,results/raw/W02_DOT_PRODUCT/W02_DOT_PRODUCT_CPU_S1_BASE_V2.csv,2026-10-03,FP32 accumulator (before the P8 double-accumulator fix): not the same computation,1
+W02_CPU_S2,4.8505,0.2107,5,results/raw/W02_DOT_PRODUCT/W02_DOT_PRODUCT_CPU_S2_SWOPT_OMP_V2_T6.csv,2026-10-03,T=6; FP32 accumulator (before the P8 double-accumulator fix): not the same computation,1
+W02_CPU_S3,4.2406,0.3528,5,results/raw/W02_DOT_PRODUCT/W02_DOT_PRODUCT_CPU_S3_HWACC_AVX2_FMA_T6.csv,2026-10-03,T=6,1
+W02_GPU_S1,43.6935,0.6367,1,results/raw/W02_DOT_PRODUCT/W02_DOT_PRODUCT_GPU_S1_BASE_NAIVE_V2.csv,2026-10-03,summary row; FP32 accumulator (before the P8 double-accumulator fix): not the same computation,1
+W02_GPU_S2,1.5443,0,1,results/raw/W02_DOT_PRODUCT/W02_DOT_PRODUCT_GPU_S2_SWOPT_BLOCK_REDUCE_V2.csv,2026-10-03,"summary row, mean only",1
+W03_CPU_S1,3036.3339,7.3927,1,results/raw/W03_GEMM/W03_GEMM_CPU_S1_BASE_1024.csv,2026-10,N=1024,1
+W03_CPU_S2,89.1533,0.1317,1,results/raw/W03_GEMM/W03_GEMM_CPU_S2_SWOPT_CACHE_BLOCK_B128_T08.csv,2026-10,N=1024 B128 T=8,1
+W03_CPU_S3,24.9626,0.119,1,results/raw/W03_GEMM/W03_GEMM_CPU_S3_HWACC_AVX2_FMA_B128_T08.csv,2026-10,N=1024 B128 T=8,1
+W03_GPU_S1,2.9407,0.1611,1,results/raw/W03_GEMM/W03_GEMM_GPU_S1_BASE_NAIVE_V1.csv,2026-10,N=1024,1
+W03_GPU_S2,2.2999,0.198,1,results/raw/W03_GEMM/W03_GEMM_GPU_S2_SWOPT_SHARED_TILE_V1.csv,2026-10,N=1024,1
+W03_GPU_S3,0.8015,0.0013,1,results/raw/W03_GEMM/W03_GEMM_GPU_S3_HWACC_TENSOR_CORE_V2.csv,2026-10,N=1024,1
+W04_GPU_S1_N1024,7.4859,,15,"results/raw/W04_ATTENTION/20261106-114338 (median of 3 rounds, tools/w04_summary.py)",2026-11-06,,1
+W04_GPU_S2a_N1024,2.2011,,15,"results/raw/W04_ATTENTION/20261106-114338 (median of 3 rounds, tools/w04_summary.py)",2026-11-06,,1
+W04_GPU_S2b_N1024,0.7864,,15,"results/raw/W04_ATTENTION/20261106-114338 (median of 3 rounds, tools/w04_summary.py)",2026-11-06,tuned default,1
+W04_GPU_S3_FP16_N1024,0.1739,,15,"results/raw/W04_ATTENTION/20261106-114338 (median of 3 rounds, tools/w04_summary.py)",2026-11-06,tuned default,1
+W04_GPU_S3_TF32_N1024,0.2774,,15,"results/raw/W04_ATTENTION/20261106-114338 (median of 3 rounds, tools/w04_summary.py)",2026-11-06,tuned default,1
+W04_GPU_REF_N1024,0.7226,,15,"results/raw/W04_ATTENTION/20261106-114338 (median of 3 rounds, tools/w04_summary.py)",2026-11-06,,1
+W04_GPU_S1_N2048,32.5254,,15,"results/raw/W04_ATTENTION/20261106-114338 (median of 3 rounds, tools/w04_summary.py)",2026-11-06,,1
+W04_GPU_S2a_N2048,9.5038,,15,"results/raw/W04_ATTENTION/20261106-114338 (median of 3 rounds, tools/w04_summary.py)",2026-11-06,,1
+W04_GPU_S2b_N2048,3.0244,,15,"results/raw/W04_ATTENTION/20261106-114338 (median of 3 rounds, tools/w04_summary.py)",2026-11-06,tuned default,1
+W04_GPU_S3_FP16_N2048,0.6463,,15,"results/raw/W04_ATTENTION/20261106-114338 (median of 3 rounds, tools/w04_summary.py)",2026-11-06,tuned default,1
+W04_GPU_S3_TF32_N2048,1.1437,,15,"results/raw/W04_ATTENTION/20261106-114338 (median of 3 rounds, tools/w04_summary.py)",2026-11-06,tuned default,1
+W04_GPU_REF_N2048,3.4217,,15,"results/raw/W04_ATTENTION/20261106-114338 (median of 3 rounds, tools/w04_summary.py)",2026-11-06,,1
+W04_CPU_S1_N1024,285.8294,,5,results/raw/W04_ATTENTION/20261105-174743 nsweep (tools/w04_summary.py),2026-11-05,T=20,1
+W04_CPU_S2_N1024,9.9303,,5,results/raw/W04_ATTENTION/20261105-174743 nsweep (tools/w04_summary.py),2026-11-05,T=20,1
+W04_CPU_S3_N1024,4.5851,,5,results/raw/W04_ATTENTION/20261105-174743 nsweep (tools/w04_summary.py),2026-11-05,T=20,1
+W04_CPU_S1_N2048,1123.7563,,5,results/raw/W04_ATTENTION/20261105-174743 nsweep (tools/w04_summary.py),2026-11-05,T=20,1
+W04_CPU_S2_N2048,39.6081,,5,results/raw/W04_ATTENTION/20261105-174743 nsweep (tools/w04_summary.py),2026-11-05,T=20,1
+W04_CPU_S3_N2048,18.1293,,5,results/raw/W04_ATTENTION/20261105-174743 nsweep (tools/w04_summary.py),2026-11-05,T=20,1

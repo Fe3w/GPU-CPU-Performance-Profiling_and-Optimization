@@ -1,3 +1,7 @@
+// W02 Dot Product, CPU S2 SWOPT: OpenMP static schedule, scalar (no
+// auto-vectorization), T threads. Each thread's partial sum is accumulated in
+// double (FP32 inputs): an FP32 partial over N/T products was 0.41 % off the
+// double sum at T = 6. Correct = |s - s_double| / s_double <= 0.1 %.
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -44,15 +48,15 @@ int main(int argc, char** argv)
         B[i] = static_cast<float>((i * 3) % 1000) * 0.001f;
     }
 
-    volatile float sink = 0.0f;
+    volatile double sink = 0.0;
 
     // Warm-up
     for (int w = 0; w < warmup; ++w) {
-        float sum = 0.0f;
+        double sum = 0.0;
 
         #pragma omp parallel for schedule(static) reduction(+:sum)
         for (std::size_t i = 0; i < N; ++i) {
-            sum += A[i] * B[i];
+            sum += static_cast<double>(A[i]) * static_cast<double>(B[i]);
         }
 
         sink = sum;
@@ -94,19 +98,21 @@ int main(int argc, char** argv)
         << "reference_result,relative_error_pct,execution_valid,"
         << "compiler,compiler_flags\n";
 
+    bool all_correct = true;
+
     for (int rep = 1; rep <= repetitions; ++rep) {
 
-        float final_result = 0.0f;
+        double final_result = 0.0;
 
         auto start = std::chrono::steady_clock::now();
 
         for (int it = 0; it < iterations; ++it) {
 
-            float sum = 0.0f;
+            double sum = 0.0;
 
             #pragma omp parallel for schedule(static) reduction(+:sum)
             for (std::size_t i = 0; i < N; ++i) {
-                sum += A[i] * B[i];
+                sum += static_cast<double>(A[i]) * static_cast<double>(B[i]);
             }
 
             final_result = sum;
@@ -138,15 +144,18 @@ int main(int argc, char** argv)
                   / reference) * 100.0
             : 0.0;
 
+    // Correct = relative error vs the double-precision sum <= 0.1 %
+    // (the same check for every W02 stage).
         const bool execution_valid =
-            std::isfinite(static_cast<double>(final_result));
+            std::isfinite(final_result) && relative_error_pct <= 0.1;
+        all_correct = all_correct && execution_valid;
 
         file << "W02_DOT_PRODUCT_CPU_S2_SWOPT_OMP_T"
              << threads
              << "_R"
              << std::setfill('0') << std::setw(2) << rep
              << std::setfill(' ')
-             << ",W02_DOT_PRODUCT,CPU,S2_SWOPT,OMP_STATIC_SCALAR,"
+             << ",W02_DOT_PRODUCT,CPU,S2_SWOPT,OMP_STATIC_SCALAR_F64ACC,"
              << N << ","
              << threads << ","
              << iterations << ","
@@ -179,8 +188,8 @@ int main(int argc, char** argv)
     std::cout << "Operational Intensity: "
               << operational_intensity
               << " FLOP/Byte\n";
-    std::cout << "Correct             : YES/NO recorded in CSV\n";
-    std::cout << "Final result        : " << sink << '\n';
+    std::cout << "Final result        : " << std::setprecision(12) << sink << '\n';
+    std::cout << "Correct             : " << (all_correct ? "YES" : "NO") << '\n';
 
-    return EXIT_SUCCESS;
+    return all_correct ? EXIT_SUCCESS : EXIT_FAILURE;
 }

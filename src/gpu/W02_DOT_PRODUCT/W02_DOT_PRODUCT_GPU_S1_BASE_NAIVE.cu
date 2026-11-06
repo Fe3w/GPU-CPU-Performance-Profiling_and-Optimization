@@ -26,7 +26,10 @@ static constexpr int BLOCK_SIZE = 256;
 // -----------------------------------------------------------------------------
 // S1 BASELINE: intentionally simple GPU dot product.
 // Each CUDA thread computes one element product and performs a global atomic
-// accumulation into a single result.
+// accumulation into a single result. The accumulator is double (FP32 inputs):
+// with an FP32 accumulator the result was 6.8 % off the double sum at
+// N = 33.5 M and passed only against an FP32 serial reference with the same
+// error. Correct = |s - s_double| / s_double <= 0.1 % (same check for every W02 stage).
 // -----------------------------------------------------------------------------
 // D = sum(A[i] * B[i])
 // FLOPs = 2 per element
@@ -35,13 +38,13 @@ static constexpr int BLOCK_SIZE = 256;
 // -----------------------------------------------------------------------------
 __global__ void dot_product_naive(const float* A,
                                   const float* B,
-                                  float* result,
+                                  double* result,
                                   std::size_t N) {
     std::size_t i =
         static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
     if (i < N) {
-        float product = A[i] * B[i];
+        double product = static_cast<double>(A[i]) * static_cast<double>(B[i]);
         atomicAdd(result, product);
     }
 }
@@ -96,7 +99,7 @@ static float compute_fp32_reference(const std::vector<float>& A,
 // -----------------------------------------------------------------------------
 // Relative error, percent, against the double reference.
 // -----------------------------------------------------------------------------
-static double relative_error_percent(float result, double reference) {
+static double relative_error_percent(double result, double reference) {
     const double denominator = std::max(std::abs(reference),
                                         std::numeric_limits<double>::min());
 
@@ -107,7 +110,7 @@ static double relative_error_percent(float result, double reference) {
 // -----------------------------------------------------------------------------
 // Relative error, percent, against the serial FP32 reference.
 // -----------------------------------------------------------------------------
-static double relative_error_fp32_percent(float result,
+static double relative_error_fp32_percent(double result,
                                           float reference) {
     const double denominator =
         std::max(std::abs(static_cast<double>(reference)),
@@ -127,7 +130,7 @@ static void write_csv(const std::string& output_path,
                       int repetitions,
                       int warmup,
                       double operational_intensity,
-                      float result,
+                      double result,
                       double reference_result,
                       double relative_error,
                       double mean_ms,
@@ -285,11 +288,11 @@ int main(int argc, char* argv[]) {
     // -------------------------------------------------------------------------
     float* d_A = nullptr;
     float* d_B = nullptr;
-    float* d_result = nullptr;
+    double* d_result = nullptr;
 
     CUDA_CHECK(cudaMalloc(&d_A, N * sizeof(float)));
     CUDA_CHECK(cudaMalloc(&d_B, N * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_result, sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_result, sizeof(double)));
 
     CUDA_CHECK(cudaMemcpy(
         d_A,
@@ -322,7 +325,7 @@ int main(int argc, char* argv[]) {
     // Warmup
     // -------------------------------------------------------------------------
     for (int w = 0; w < warmup; ++w) {
-        CUDA_CHECK(cudaMemset(d_result, 0, sizeof(float)));
+        CUDA_CHECK(cudaMemset(d_result, 0, sizeof(double)));
 
         dot_product_naive<<<grid_size, BLOCK_SIZE>>>(
             d_A, d_B, d_result, N);
@@ -342,10 +345,10 @@ int main(int argc, char* argv[]) {
     gflops.reserve(repetitions);
     bandwidth_gbs.reserve(repetitions);
 
-    float final_result = 0.0f;
+    double final_result = 0.0;
 
     for (int rep = 0; rep < repetitions; ++rep) {
-        CUDA_CHECK(cudaMemset(d_result, 0, sizeof(float)));
+        CUDA_CHECK(cudaMemset(d_result, 0, sizeof(double)));
 
         CUDA_CHECK(cudaEventRecord(start));
 
@@ -354,7 +357,7 @@ int main(int argc, char* argv[]) {
             CUDA_CHECK(cudaMemsetAsync(
                 d_result,
                 0,
-                sizeof(float)));
+                sizeof(double)));
 
             dot_product_naive<<<grid_size, BLOCK_SIZE>>>(
                 d_A, d_B, d_result, N);
@@ -391,7 +394,7 @@ int main(int argc, char* argv[]) {
         CUDA_CHECK(cudaMemcpy(
             &final_result,
             d_result,
-            sizeof(float),
+            sizeof(double),
             cudaMemcpyDeviceToHost));
 
         times_ms.push_back(average_time_ms);
@@ -466,10 +469,10 @@ int main(int argc, char* argv[]) {
             final_result,
             fp32_reference_result);
 
-    // Validation is against the serial FP32 CPU reference.
-    // The double reference is retained to report accumulation error.
+    // Validation is against the double-precision sum (same check for every
+    // W02 stage); the serial FP32 sum is printed for comparison only.
     const bool correct =
-        relative_error_vs_fp32 < 0.1;
+        std::isfinite(final_result) && relative_error <= 0.1;
 
     std::cout << "\n========================================\n";
     std::cout << "SUMMARY\n";
