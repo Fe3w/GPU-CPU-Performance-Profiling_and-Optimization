@@ -10,6 +10,7 @@
 #   bash scripts/w04_sweep.sh gpu-nsweep    runtime vs N, GPU S1/S2a/REF_CUBLAS/S2b (32x32, 64x64)/S3 (FP16, TF32), + tuned defaults
 #   bash scripts/w04_sweep.sh gpu-autotune  E7: Br x Bc x warps screen + finals for S2b, S3 FP16/TF32 (P5)
 #   bash scripts/w04_sweep.sh gpu-flags     S2b with and without --use_fast_math: checks, speed, SASS (P5)
+#   bash scripts/w04_sweep.sh gpu-fusion    S2a vs S2b 16x16 W8 (same per-thread work), paired (P6)
 #
 # Output: results/raw/W04_ATTENTION/<YYYYMMDD-HHMMSS>/ (refused if it exists)
 #   run_info.txt  machine state at the start (CPU, caches, governor, power, GPU clocks)
@@ -49,6 +50,12 @@
 # interleaved rounds, one CSV per (build, config) in flags/; SASS counts and
 # MUFU.EX2 windows: profiling/W04_ATTENTION/codegen/<TS>/s2b_fastmath_sass.txt.
 #
+# Fusion only (gpu-fusion, C35): S2a's tiled GEMMs give each thread one
+# output (2 shared loads per FMA); S2b at 16x16 with 8 warps does the same, so
+# the S2a -> S2b 16x16 W8 ratio isolates fusion from register tiling. S2b at
+# its tuned default runs alongside as the reference. NS_FUSION, GPU_ROUNDS
+# interleaved rounds, stage order rotated per round, gpu_state.csv logged.
+#
 # Environment overrides (for smoke tests): QUICK=1 (tiny sizes, 1 iteration),
 # RESULTS_ROOT, PROFILING_ROOT, ALLOW_DIRTY=1, E7_SEED, FM_CONFIGS.
 # Exit status 1 if any run did not end with "Correct : YES".
@@ -56,7 +63,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-usage() { sed -n '4,12p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
+usage() { sed -n '4,13p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 [[ $# -eq 1 ]] || usage
 CMD=$1
 
@@ -90,6 +97,7 @@ NS_FLAGS=(1024 2048)
 NS_GPU=(512 1024 2048 4096 8192)
 NS_E7=(2048 4096)
 NS_FM=(1024 2048 4096)
+NS_FUSION=(1024 2048 4096)
 E7_SEED=${E7_SEED:-20261106}
 FM_CONFIGS=${FM_CONFIGS:-"32 32 8;64 64 8"}
 PROTO_SCREEN=(--warmup 2 --iters 10 --reps 3)
@@ -100,7 +108,7 @@ if [[ "$QUICK" == 1 ]]; then
     PROTO=(--warmup 0 --iters 1 --reps 2); PROTO_S1_LARGE=("${PROTO[@]}")
     SHAPE=(--bh 2 --d 64)
     NS_S1=(128 256); NS_FUSED=(128 256); NS_TILES=(256); NS_THREADS=(256); NS_FLAGS=(256); NS_GPU=(128 256)
-    NS_E7=(128 256); NS_FM=(128 256); PROTO_SCREEN=(--warmup 0 --iters 1 --reps 3)
+    NS_E7=(128 256); NS_FM=(128 256); NS_FUSION=(128 256); PROTO_SCREEN=(--warmup 0 --iters 1 --reps 3)
     GPU_ROUNDS=2
     BRS=(16 32); BCS=(32 64); THREADS="1 2 20"
 fi
@@ -308,6 +316,27 @@ gpu_nsweep() {
     stop_gpu_sampler
 }
 
+gpu_fusion() {
+    echo "== GPU fusion-only comparison ($GPU_ROUNDS rounds, stage order rotated per round) =="
+    start_gpu_sampler
+    local entries=("$G2A|$G2A|" "${G2B}_16x16w8|$G2B|--br 16 --bc 16 --warps 8" "${G2B}_tuned|$G2B|")
+    local k=${#entries[@]} round n s
+    for ((round = 1; round <= GPU_ROUNDS; round++)); do
+        for n in "${NS_FUSION[@]}"; do
+            for ((s = 0; s < k; s++)); do
+                local name bin extra
+                IFS='|' read -r name bin extra <<< "${entries[$(( (s + round - 1) % k ))]}"
+                local -a xa=()
+                [[ -n "$extra" ]] && read -r -a xa <<< "$extra"
+                run "$RUN/gpu_fusion/$name.csv" "gpu_fusion/${name}_n${n}_r$round" "$NTHREADS_ALL" "build/$bin" \
+                    --n "$n" "${SHAPE[@]}" "${PROTO[@]}" "${xa[@]}"
+            done
+        done
+    done
+    stop_gpu_sampler
+    echo "  summary: python3 tools/w04_summary.py $RUN"
+}
+
 # ------------------------------------------------------------- E7 autotune
 # The binary's validate() decides which cells exist; this only records its answer.
 e7_probe() {   # <stage id> <br> <bc> <w>  -> "" if runnable, else the reason
@@ -484,6 +513,7 @@ case "$CMD" in
     gpu-nsweep) NEED=("$G1" "$G2A" "$GREF" "$G2B" "$G3H" "$G3T") ;;
     gpu-autotune) NEED=("$G2B" "$G3H" "$G3T") ;;
     gpu-flags) NEED=("$G2B") ;;
+    gpu-fusion) NEED=("$G2A" "$G2B") ;;
     *) usage ;;
 esac
 make --no-print-directory w04 >/dev/null
@@ -499,6 +529,7 @@ case "$CMD" in
     gpu-nsweep)  gpu_nsweep ;;
     gpu-autotune) gpu_autotune ;;
     gpu-flags)   gpu_flags ;;
+    gpu-fusion)  gpu_fusion ;;
 esac
 echo "== done: $FAILS failed runs; results in $RUN =="
 (( FAILS == 0 ))

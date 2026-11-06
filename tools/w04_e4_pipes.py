@@ -9,6 +9,15 @@ in the folder. A ComputeWorkloadAnalysis export gives the per-pipe utilization
 cycles per issued instruction and their share of the total. Exports with
 neither are skipped.
 
+P6 additions:
+- WarpStateStats exports that also carry the Occupancy / LaunchStats sections
+  print theoretical and achieved occupancy, eligible and active warps per
+  scheduler, registers and shared memory per block.
+- `<name>_ld.raw.csv` exports (instruction-mix metrics) print warp-level
+  shared-memory load instructions (LDS + LDSM), thread-level FFMA and their
+  ratio: FFMA per shared load = 32 * FFMA_thread / (32 * shared_ld_warp)
+  = FFMA_thread / (32 * shared_ld_warp) per thread-load.
+
 Issue-rate check printed for WarpStateStats: with W warps per scheduler and
 L cycles between two issues of one warp, a scheduler issues at most W / L
 instructions per cycle, which is compared with the measured issue-slot use
@@ -33,6 +42,20 @@ IPC = "sm__inst_executed.avg.per_cycle_active"
 LAT = "smsp__average_warp_latency_per_inst_issued.ratio"
 STALL_PREFIX = "smsp__average_warps_issue_stalled_"
 STALL_SUFFIX = "_per_issue_active.ratio"
+OCC = [  # (label, metric, format)
+    ("theoretical occupancy %", "sm__maximum_warps_per_active_cycle_pct", "{:.1f}"),
+    ("achieved occupancy %", "sm__warps_active.avg.pct_of_peak_sustained_active", "{:.1f}"),
+    ("active warps / scheduler", "smsp__warps_active.avg.per_cycle_active", "{:.2f}"),
+    ("eligible warps / scheduler", "smsp__warps_eligible.avg.per_cycle_active", "{:.2f}"),
+    ("registers / thread", "launch__registers_per_thread", "{:.0f}"),
+    ("smem / block (B, +1 KB reserved)", "launch__shared_mem_per_block", "{:.0f}"),
+    ("blocks / SM (smem limit)", "launch__occupancy_limit_shared_mem", "{:.0f}"),
+    ("blocks / SM (reg limit)", "launch__occupancy_limit_registers", "{:.0f}"),
+]
+LD_SHARED = "smsp__inst_executed_op_shared_ld.sum"
+LD_LDSM = "smsp__inst_executed_op_ldsm.sum"
+FFMA = "smsp__sass_thread_inst_executed_op_ffma_pred_on.sum"
+INST = "smsp__inst_executed.sum"
 
 
 def load(path):
@@ -40,10 +63,11 @@ def load(path):
         rows = list(csv.reader(f))
     if len(rows) < 3:
         return {}
+    scale = {"byte": 1.0, "Kbyte": 1e3, "Mbyte": 1e6, "Gbyte": 1e9}   # also "Kbyte/block" etc.
     out = {}
-    for h, v in zip(rows[0], rows[2]):
+    for h, u, v in zip(rows[0], rows[1], rows[2]):
         try:
-            out[h] = float(v.replace(",", ""))
+            out[h] = float(v.replace(",", "")) * scale.get(u.split("/")[0], 1.0)
         except ValueError:
             pass
     return out
@@ -79,10 +103,23 @@ def main():
             for k, v in sorted(stalls.items(), key=lambda kv: -kv[1]):
                 if v / lat >= 0.01:
                     print(f"  {k:<22} {v:6.2f} cycles  {100 * v / lat:5.1f} %")
+            for label, key, fmt in OCC:
+                if key in m:
+                    print(f"  {label:<30} {fmt.format(m[key])}")
             base = name.rsplit('_', 1)[0]
             if base in issue_busy and issue_busy[base] is not None:
                 print(f"  issue-slot use from ComputeWorkloadAnalysis: {issue_busy[base]:.1f} %; "
                       f"warps per scheduler needed for 100 %: {lat:.1f}")
+        elif LD_SHARED in m:
+            sh, ffma = m[LD_SHARED], m.get(FFMA, float("nan"))
+            print(f"\n== {name}: instruction mix (whole kernel)")
+            print(f"  {'shared loads (warp instr)':<30} {sh:,.0f}  (of which LDSM {m.get(LD_LDSM, 0):,.0f})")
+            print(f"  {'FFMA (thread instr)':<30} {ffma:,.0f}")
+            print(f"  {'warp instructions executed':<30} {m.get(INST, float('nan')):,.0f}")
+            print(f"  {'FFMA per shared load (thread)':<30} {ffma / (32 * sh):.2f}")
+            for label, key, fmt in OCC[2:4]:
+                if key in m:
+                    print(f"  {label:<30} {fmt.format(m[key])}")
     return 0
 
 

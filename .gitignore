@@ -40,3 +40,6 @@ __pycache__/
 .DS_Store
 nohup.out
 core
+
+# VTune result folders written by scripts/w04_profile.sh e8 (the CSV/text exports next to them are kept)
+profiling/W04_ATTENTION/e8/*/vtune_*/

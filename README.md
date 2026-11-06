@@ -37,7 +37,8 @@ Measured on the hardware above (mean of 5 repetitions). W04 CPU numbers come fro
 | W04 GPU (unfused) | S1→S2a ~3.4× at N=1024 (7.63 → 2.23 ms); cuBLAS-based reference 0.75 ms | Tiled GEMMs and a warp-per-row softmax; S2a's GEMMs are limited by shared-memory loads. With cuBLAS GEMMs the N×N softmax becomes the largest kernel (46% at N=8192): the cost that fusion removes |
 | W04 GPU (fused) | S2a→S2b 2.0–2.1× (32×32 tile) and 2.9–3.0× (64×64) at N=2048–8192; at N=4096: 38.75 → 18.77 / 13.33 ms. S2b 64×64 matches or beats the cuBLAS-based unfused reference from N=2048 | One kernel, no N×N intermediate: measured DRAM traffic drops ~33–42× at N=4096 (≈2.2 GB → 52–68 MB) and operational intensity rises from ~15 to 500–650 FLOP/B. The speedup also includes register-tiled inner GEMMs (fewer shared-memory loads per FMA), so it is not fusion alone |
 | W04 GPU (Tensor Cores) | S2b 64×64 → S3: FP16 5.0–5.2×, TF32 1.7–1.8× at N=2048–8192; at N=4096: 13.36 → 2.56 ms (FP16, 13.4 TFLOP/s) / 7.57 ms (TF32, 4.5 TFLOP/s). S1 → S3 FP16 52.6× at N=8192. Converting Q, K, V to FP16 adds 2–6% | Both inner GEMMs on the Tensor Cores with FP32 accumulation; max relative error ≤ 3.7e-4 against a double-precision reference. Nsight Compute: tensor pipe 22% busy, `exp` unit 6%: the kernel is limited by latency at low occupancy (2 warps per scheduler), not by any execution unit. TF32 is ~3× slower than FP16 (half the Tensor Core rate, more instructions, half the occupancy) |
-| W04 GPU (autotune) | Search over tile (Br × Bc ∈ {16, 32, 64}²) × warps per block (2, 4, 8) at N=2048 and 4096: S2b best 64×32 with 4 warps, 1.53–1.62× its old 32×32 default and 1.08–1.10× the 64×64 tile with 8 warps (12.40 ms, 2.77 TFLOP/s at N=4096); S3 TF32 best 64×32 with 4 warps, 1.32–1.36× its 64×64 default; S3 FP16 unchanged within noise (64×32 and 64×64, 4 warps, tie). `--use_fast_math` on S2b: 1–5% faster, same error (2.2e-6) | Fewer warps per block give each thread more of the tile (more FMAs per shared-memory load), and the 64×32 tile fits 2 blocks per SM, so 8 warps per SM come from two independent blocks. For S3 TF32 the smaller tile doubles the blocks per SM (1 → 2). Fast-math removes the `exp` range reduction and the exact-division path (25–29% fewer instructions in the kernel), but these are outside the inner FMA loops |
+| W04 GPU (autotune) | Search over tile (Br × Bc ∈ {16, 32, 64}²) × warps per block (2, 4, 8) at N=2048 and 4096: S2b best 64×32 with 4 warps, 1.53–1.62× its old 32×32 default and 1.08–1.10× the 64×64 tile with 8 warps (12.40 ms, 2.77 TFLOP/s at N=4096); S3 TF32 best 64×32 with 4 warps, 1.32–1.36× its 64×64 default; S3 FP16 unchanged within noise (64×32 and 64×64, 4 warps, tie). `--use_fast_math` on S2b: 1–5% faster, same error (2.2e-6) | The 64×32 tile with 4 warps fits 2 blocks per SM, so the 8 warps per SM come from two independent blocks. Nsight Compute shows the same FMAs per shared-memory load and the same barrier stalls as 64×64 with 8 warps, but 3× fewer waits on shared-memory loads (1.78 → 0.58 cycles per instruction). For S3 TF32 the smaller tile doubles the blocks per SM (1 → 2). Fast-math removes the `exp` range reduction and the exact-division path (25–29% fewer instructions in the kernel), but these are outside the inner FMA loops |
+| W04 profiling | Naive GPU attention (S1): the QKᵀ kernel takes 65% of the time at 2.5% of DRAM bandwidth; the N×N softmax only 20%. Fused FP32 kernel (S2b) vs unfused (S2a) at N=2048: 3.15× faster, of which fusion alone is 1.15× and register tiling 2.74×. Tensor Core kernel (S3 FP16) at N=2048: 13.9 TFLOP/s, 48% of the FP16 Tensor Core peak at the measured 55 W clock. S1 → S3 FP16 53× at N=2048 | S1's QKᵀ kernel is limited by the L1 cache, not DRAM: its K loads are uncoalesced (9 sectors per request instead of 4). Fusion removes 24–41× of the DRAM bytes, but S2a's GEMMs were not DRAM-bound either, so the time saved is small; most of the gain is register tiling. S3 is latency-bound at 2 warps per scheduler: the waits are spread over dependent instructions, Tensor Core issue bursts (19% of stall samples), and the synchronous copy of K/V tiles into shared memory. On the CPU, L2 misses stay rare (≤ 0.016 per 1000 instructions) when K/V outgrow L2, and `exp` is 17% of the fused stage's time; the AVX2 stage's 2.9× comes from 256-bit FMA and 4.5× fewer instructions |
 
 ## Status
 
@@ -50,7 +51,7 @@ Measured on the hardware above (mean of 5 repetitions). W04 CPU numbers come fro
 | W04 P3 | GPU S2b fused kernel | done: one FlashAttention-2-style FP32 kernel (online softmax, no N×N buffer, peak device memory linear in N); faster than S2a at every N (1.5–2.1× at 32×32, 2.1–3.0× at 64×64, N=512–8192); DRAM bytes measured with Nsight Compute: ~21–42× fewer than S2a at N=2048–4096 |
 | W04 P4 | GPU S3 Tensor Core kernel | done: FP16 (WMMA m16n16k16, `HMMA.16816.F32`) and TF32 (m16n16k8, `HMMA.1684.F32.TF32`) variants of the fused kernel, FP32 softmax, accumulation and output, 64×64 tiles; FP16 5.0–5.2× and TF32 1.7–1.8× faster than the FP32 fused kernel at the same tile (N=2048–8192); Nsight Compute shows no saturated pipe (tensor pipe 22% busy) — the kernel is latency-bound at low occupancy |
 | W04 P5 | autotuning | done: 45 tile × warps configurations per N (36 skipped with a recorded reason), screen + full-protocol finals at N=2048/4096; new defaults in `src/common/w04_tuned.hpp` (S2b 64×32/4 warps, 1.5–1.6× the old default; S3 TF32 64×32/4 warps, 1.3–1.4×; S3 FP16 64×32 at N ≤ 3072, 64×64 above, a tie); heatmaps in `docs/figures/w04/`; `--use_fast_math` on S2b 1–5% faster at unchanged error |
-| W04 P6 | profiling and plots | planned |
+| W04 P6 | profiling and plots | done: Nsight Compute DRAM bytes and stall reasons per kernel, Nsight Systems launch gaps (0.6–0.8 µs between kernels), CPU counters (`perf stat`, VTune hotspots); four hypotheses tested against profiler counters (results row "W04 profiling" above); plots in `docs/figures/w04/` |
 | W04 P7 | demo integration | planned |
 
 ## Requirements
@@ -146,6 +147,32 @@ bash scripts/w04_sweep.sh gpu-autotune
 python3 tools/w04_e7_select.py report results/raw/W04_ATTENTION/<run folder>
 python3 tools/w04_e7_heatmap.py results/raw/W04_ATTENTION/<run folder>   # PNGs into docs/figures/w04/
 bash scripts/w04_sweep.sh gpu-flags
+```
+
+Fusion-only comparison: the unfused S2a against S2b at 16×16 with 8 warps, which does the same work per thread, so the ratio isolates fusion from register tiling:
+
+```bash
+bash scripts/w04_sweep.sh gpu-fusion
+```
+
+Profiling. Nsight Compute usually needs root, so `e3` and `e4` only write a script of ncu commands (one kernel per command) into a timestamped folder under `profiling/W04_ATTENTION/` and print how to run it. `e5` (Nsight Systems: idle gaps between the kernels of a forward pass) and `e8` (CPU: `perf stat` counters per forward pass, VTune hotspots) run directly:
+
+```bash
+bash scripts/w04_profile.sh e3                        # DRAM bytes per stage and kernel
+bash scripts/w04_profile.sh e4                        # warp stalls, occupancy, instruction mix
+bash scripts/w04_profile.sh import <profiling folder> # ncu reports -> CSV
+bash scripts/w04_profile.sh e5
+bash scripts/w04_profile.sh e8
+python3 tools/w04_e4_pipes.py <profiling folder>
+python3 tools/w04_e4_source.py <profiling folder>/<name>.source.csv   # stall samples per SASS opcode
+```
+
+`e8` runs each CPU stage twice with different numbers of timed passes and divides the difference in counts by the difference in passes, which removes the setup and the reference check from the counts.
+
+Plots (runtime vs N, factored speedups, Roofline with measured traffic, peak device memory vs N) from one GPU N-sweep folder, optionally with a CPU N sweep and Nsight Compute E3 folders:
+
+```bash
+python3 tools/plot_w04.py results/raw/W04_ATTENTION/<gpu run> --cpu-run results/raw/W04_ATTENTION/<cpu run> --e3 <e3 folder> ...
 ```
 
 ## Repository layout
