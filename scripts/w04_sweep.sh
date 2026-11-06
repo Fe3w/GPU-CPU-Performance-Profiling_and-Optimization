@@ -8,6 +8,7 @@
 #   bash scripts/w04_sweep.sh cpu-flags     compiler-flag study (build/flagstudy/)
 #   bash scripts/w04_sweep.sh cpu-all       all CPU experiments in one session folder
 #   bash scripts/w04_sweep.sh gpu-nsweep    runtime vs N, GPU S1/S2a/REF_CUBLAS/S2b (32x32, 64x64)/S3 (FP16, TF32), + tuned defaults
+#                                           (GPU_NS="<N list>" replaces the default N = 512 1024 2048 4096 8192)
 #   bash scripts/w04_sweep.sh gpu-autotune  E7: Br x Bc x warps screen + finals for S2b, S3 FP16/TF32 (P5)
 #   bash scripts/w04_sweep.sh gpu-flags     S2b with and without --use_fast_math: checks, speed, SASS (P5)
 #   bash scripts/w04_sweep.sh gpu-fusion    S2a vs S2b 16x16 W8 (same per-thread work), paired (P6)
@@ -94,7 +95,7 @@ NS_FUSED=(512 1024 2048 4096 8192)
 NS_TILES=(1024 4096)
 NS_THREADS=(1024 2048)
 NS_FLAGS=(1024 2048)
-NS_GPU=(512 1024 2048 4096 8192)
+NS_GPU=(${GPU_NS:-512 1024 2048 4096 8192})   # GPU_NS="2048 4096" overrides (e.g. the locked-clock check, issue 11)
 NS_E7=(2048 4096)
 NS_FM=(1024 2048 4096)
 NS_FUSION=(1024 2048 4096)

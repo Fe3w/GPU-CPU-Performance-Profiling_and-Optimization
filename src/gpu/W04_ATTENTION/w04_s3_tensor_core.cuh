@@ -91,6 +91,9 @@ struct PrecFP16 {
     static constexpr bool kSeparateP = true;   // P̃ in its own half buffer
     template <class Frag>
     __device__ static void round(Frag&) {}
+    // nvcc infers the shared state space for the FP16 WMMA loads (LDS / LDSM in SASS).
+    template <class Frag>
+    __device__ static void load(Frag& f, const elem* p, unsigned ld) { wmma::load_matrix_sync(f, p, ld); }
 };
 
 struct PrecTF32 {
@@ -104,6 +107,30 @@ struct PrecTF32 {
 #pragma unroll
         for (int t = 0; t < f.num_elements; ++t) f.x[t] = wmma::__float_to_tf32(f.x[t]);
     }
+    // wmma::load_matrix_sync for precision::tf32 emits the generic-address PTX
+    // form (wmma.load.*.tf32 without .shared), which ptxas compiles to LD.E: the
+    // fragment loads from shared memory then run through the global load path.
+    // The loads below name the .shared state space explicitly; the loaded bits
+    // and the fragment layout are those of load_matrix_sync (same PTX
+    // instruction, same operands), so results are unchanged. p must point to
+    // shared memory.
+    using frag_a_row = wmma::fragment<wmma::matrix_a, 16, 16, 8, frag_t, wmma::row_major>;
+    using frag_b_col = wmma::fragment<wmma::matrix_b, 16, 16, 8, frag_t, wmma::col_major>;
+    using frag_b_row = wmma::fragment<wmma::matrix_b, 16, 16, 8, frag_t, wmma::row_major>;
+#define W04_TF32_LDS(AB, LAY)                                                                        \
+    static_assert(sizeof(f.x) / sizeof(f.x[0]) == 4, "m16n16k8 tf32 A/B fragments hold 4 elements"); \
+    unsigned u0, u1, u2, u3;                                                                         \
+    const unsigned a = static_cast<unsigned>(__cvta_generic_to_shared(p));                           \
+    asm volatile("wmma.load." AB ".sync.aligned." LAY ".m16n16k8.shared.tf32 {%0, %1, %2, %3}, [%4], %5;" \
+                 : "=r"(u0), "=r"(u1), "=r"(u2), "=r"(u3)                                             \
+                 : "r"(a), "r"(ld)                                                                   \
+                 : "memory");                                                                        \
+    f.x[0] = __uint_as_float(u0); f.x[1] = __uint_as_float(u1);                                      \
+    f.x[2] = __uint_as_float(u2); f.x[3] = __uint_as_float(u3);
+    __device__ static void load(frag_a_row& f, const float* p, unsigned ld) { W04_TF32_LDS("a", "row") }
+    __device__ static void load(frag_b_col& f, const float* p, unsigned ld) { W04_TF32_LDS("b", "col") }
+    __device__ static void load(frag_b_row& f, const float* p, unsigned ld) { W04_TF32_LDS("b", "row") }
+#undef W04_TF32_LDS
 };
 
 template <class P, int Br, int Bc, int W>
@@ -174,7 +201,7 @@ flash_fwd_tc(const typename P::elem* __restrict__ Q, const typename P::elem* __r
     for (int st = 0; st < SPW; ++st)
 #pragma unroll
         for (int k = 0; k < kDmax / WK; ++k) {
-            wmma::load_matrix_sync(qf[st][k], Qstage + (warp * SPW + st) * 16 * kKVld + k * WK, kKVld);
+            P::load(qf[st][k], Qstage + (warp * SPW + st) * 16 * kKVld + k * WK, kKVld);
             P::round(qf[st][k]);
         }
     __syncthreads();  // staging area free for K/V
@@ -205,7 +232,7 @@ flash_fwd_tc(const typename P::elem* __restrict__ Q, const typename P::elem* __r
 #pragma unroll
                     for (int n = 0; n < Bc / 16; ++n) {
                         wmma::fragment<wmma::matrix_b, 16, 16, WK, frag_t, wmma::col_major> kf;
-                        wmma::load_matrix_sync(kf, Ks + n * 16 * kKVld + k * WK, kKVld);
+                        P::load(kf, Ks + n * 16 * kKVld + k * WK, kKVld);
                         P::round(kf);
                         wmma::mma_sync(acc[n], qf[st][k], kf, acc[n]);
                     }
@@ -268,14 +295,14 @@ flash_fwd_tc(const typename P::elem* __restrict__ Q, const typename P::elem* __r
                 for (int k = 0; k < Bc; k += WK) {
                     wmma::fragment<wmma::matrix_a, 16, 16, WK, frag_t, wmma::row_major> pf;
                     if constexpr (P::kSeparateP)
-                        wmma::load_matrix_sync(pf, Pw + k, kPld);
+                        P::load(pf, Pw + k, kPld);
                     else
-                        wmma::load_matrix_sync(pf, Sw + k, kSld);
+                        P::load(pf, Sw + k, kSld);
                     P::round(pf);
 #pragma unroll
                     for (int t = 0; t < kDmax / 16; ++t) {
                         wmma::fragment<wmma::matrix_b, 16, 16, WK, frag_t, wmma::row_major> vf;
-                        wmma::load_matrix_sync(vf, Vs + k * kKVld + t * 16, kKVld);
+                        P::load(vf, Vs + k * kKVld + t * 16, kKVld);
                         P::round(vf);
                         wmma::mma_sync(acc[t], pf, vf, acc[t]);
                     }

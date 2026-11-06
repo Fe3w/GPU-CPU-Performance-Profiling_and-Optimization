@@ -4,6 +4,7 @@
 #
 #   bash scripts/w04_profile.sh e3            write the E3 ncu commands (DRAM bytes, H1 counters)
 #   bash scripts/w04_profile.sh e4            write the E4 ncu commands (stalls, occupancy, source)
+#   bash scripts/w04_profile.sh e4x           write the P6 follow-up ncu commands (issues 16, 27, 17)
 #   bash scripts/w04_profile.sh e5            run Nsight Systems: launch gaps of S1/S2a/REF/S2b/S3
 #   bash scripts/w04_profile.sh e8            run CPU counters: perf stat (differential) + VTune hotspots
 #   bash scripts/w04_profile.sh import <dir>  export every ncu report in <dir> to CSV
@@ -37,7 +38,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 REPO=$(pwd)
 
-usage() { sed -n '4,10p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
+usage() { sed -n '4,11p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 [[ $# -ge 1 ]] || usage
 CMD=$1
 
@@ -176,6 +177,36 @@ e4() {
     write_ncu_script
 }
 
+# P6 follow-ups (open issues 16, 27, 17), each one kernel per command:
+#   27  SourceCounters + WarpStateStats on S2b 64x32 W4 and 64x64 W8 (N = N_E4):
+#       which instructions carry the short-scoreboard stalls of each variant
+#   16  S2b reads above the compulsory Q, K, V bytes: L2 hit rate and L2 read
+#       misses from L1 for S2b 64x32 W4 and 64x64 W8 at N = the last NS_E3
+#   17  TF32 after the explicit shared-memory fragment loads: WarpStateStats +
+#       Occupancy (was: generic LD.E, long scoreboard) and the E3 DRAM metrics
+#       at every NS_E3 (the TF32 Roofline point moves with the new kernel)
+e4x() {
+    new_dir e4x
+    local wss="--section WarpStateStats --section Occupancy --section LaunchStats"
+    local src="--section SourceCounters --section WarpStateStats"
+    local l2="--metrics dram__bytes_read.sum,dram__bytes_write.sum,lts__t_bytes.sum,gpu__time_duration.sum,lts__t_sector_hit_rate.pct,lts__t_sectors_srcunit_tex_op_read.sum,lts__t_sectors_srcunit_tex_op_read_lookup_hit.sum,lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum"
+    local metrics="--metrics dram__bytes_read.sum,dram__bytes_write.sum,lts__t_bytes.sum,gpu__time_duration.sum"
+    local n nl=${NS_E3[${#NS_E3[@]}-1]}
+    N_CUR=$N_E4
+    ncu_cmd "S2b_64x32w4_n${N_CUR}_src" 'flash_fwd_fp32' 0 "$src" "$G2B" --br 64 --bc 32 --warps 4
+    ncu_cmd "S2b_64x64w8_n${N_CUR}_src" 'flash_fwd_fp32' 0 "$src" "$G2B" --br 64 --bc 64 --warps 8
+    N_CUR=$nl
+    ncu_cmd "S2b_64x32w4_n${N_CUR}_l2" 'flash_fwd_fp32' 0 "$l2" "$G2B" --br 64 --bc 32 --warps 4
+    ncu_cmd "S2b_64x64w8_n${N_CUR}_l2" 'flash_fwd_fp32' 0 "$l2" "$G2B" --br 64 --bc 64 --warps 8
+    N_CUR=$N_E4
+    ncu_cmd "S3TF32_64x32w4_n${N_CUR}_wss" 'flash_fwd_tc' 0 "$wss" "$G3T" --br 64 --bc 32 --warps 4
+    for n in "${NS_E3[@]}"; do
+        N_CUR=$n
+        ncu_cmd "S3TF32_tuned_n$n" 'flash_fwd_tc' 0 "$metrics" "$G3T"
+    done
+    write_ncu_script
+}
+
 import_dir() {
     local d=$1 f base n=0
     [[ -d "$d" ]] || { echo "no such folder: $d"; exit 1; }
@@ -293,7 +324,7 @@ e8() {
 # ------------------------------------------------------------------- main
 case "$CMD" in
     import) [[ $# -eq 2 ]] || usage; import_dir "$2"; exit 0 ;;
-    e3|e4|e5|e8) [[ $# -eq 1 ]] || usage ;;
+    e3|e4|e4x|e5|e8) [[ $# -eq 1 ]] || usage ;;
     *) usage ;;
 esac
 make --no-print-directory w04 >/dev/null
@@ -301,6 +332,7 @@ check_sha
 case "$CMD" in
     e3) e3 ;;
     e4) e4 ;;
+    e4x) e4x ;;
     e5) e5 ;;
     e8) e8 ;;
 esac

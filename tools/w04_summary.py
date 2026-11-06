@@ -10,7 +10,11 @@ If the run folder has gpu_state.csv, each run is matched to the nvidia-smi
 samples taken between its start (commands.log) and the next run's start, and
 the median SM clock / power / max temperature over those samples are shown.
 The first-rep column is rep 1's time relative to the mean of the other reps
-(a clock ramp-up shows up as a positive value).
+(a clock ramp-up shows up as a positive value). On the GPU rep 1 is the
+faster one (it runs before the 55 W power cap engages), so the steady column
+gives the median over runs of the mean of reps 2..R, the power-capped steady
+state (open issue 9, option b). Ratios and plots keep using the mean of all
+reps (the protocol); quote steady next to it where rep 1 matters.
 If a CSV has a non-empty prep_ms column (P4, decision C23: the untimed FP16
 conversion of GPU S3), a second table shows the median prep time per (stage, N),
 its size relative to runtime_ms, and runtime + prep.
@@ -130,14 +134,14 @@ def main():
 
         print(f"\n== {exp} ({run}) ==")
         wid = max([38] + [len(k[0]) for k in runs])
-        hdr = f"{'stage':<{wid}} {'N':>5} {'runs':>4} {'median ms':>11} {'GFLOP/s':>8} {'spread%':>8} {'repSD%':>7} {'rep1%':>6}"
+        hdr = f"{'stage':<{wid}} {'N':>5} {'runs':>4} {'median ms':>11} {'steady ms':>10} {'GFLOP/s':>8} {'spread%':>8} {'repSD%':>7} {'rep1%':>6}"
         if window:
             hdr += f" {'SM MHz':>7} {'W':>5} {'Tmax':>5}"
         print(hdr)
         med_by = {}
         for key in sorted(runs, key=lambda k: (k[1], k[0])):
             sid, n = key
-            per_run = []
+            per_run, steady = [], []
             sds, rep1 = [], []
             for k, ts in enumerate(sorted(runs[key])):
                 reps = [ms for _, ms in sorted(runs[key][ts])]
@@ -147,10 +151,12 @@ def main():
                     sds.append(100 * st.stdev(reps) / m)
                     rest = st.mean(reps[1:])
                     rep1.append(100 * (reps[0] - rest) / rest)
+                    steady.append(rest)
             med = st.median(per_run)
             med_by[key] = med
             spread = 100 * (max(per_run) - min(per_run)) / med
-            line = (f"{sid:<{wid}} {n:>5} {len(per_run):>4} {med:>11.4f} {flops[key] / med / 1e6:>8.1f} "
+            sty = f"{st.median(steady):>10.4f}" if steady else f"{'-':>10}"
+            line = (f"{sid:<{wid}} {n:>5} {len(per_run):>4} {med:>11.4f} {sty} {flops[key] / med / 1e6:>8.1f} "
                     f"{spread:>8.1f} {st.mean(sds) if sds else 0:>7.1f} {st.mean(rep1) if rep1 else 0:>6.1f}")
             if window:
                 w = [window[(sid, n, k)] for k in range(len(per_run)) if (sid, n, k) in window]

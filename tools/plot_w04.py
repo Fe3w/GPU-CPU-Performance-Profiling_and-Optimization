@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """W04 plots: E1 runtime vs N, E2 factored speedups, E3 measured-traffic Roofline, E6 memory vs N.
 
-    python3 tools/plot_w04.py <gpu_run> [--cpu-run <run>] [--e3 <dir> ...] [--out docs/figures/w04]
+    python3 tools/plot_w04.py <gpu_run> [--cpu-run <run>] [--e3 <dir> ...] [--e3-replace <dir> ...] [--out docs/figures/w04]
 
 <gpu_run>  a results/raw/W04_ATTENTION/<TS> folder with gpu_nsweep/ (decision C35:
            every GPU point of E1, E2, E6 and the Roofline's y values come from this
@@ -13,7 +13,11 @@
            processes that allocate GPU memory during a run (browser, desktop)
            change it, so E6 may need a session without them (P6: the P4 sweep)
 --e3       ncu E3 folders (profiling/W04_ATTENTION/e3/<TS>); without them the
-           Roofline shows the algorithmic operational intensity only
+           Roofline shows the algorithmic operational intensity only. A (stage, N)
+           found in several folders is averaged over them
+--e3-replace  ncu folders whose (stage, N) entries replace those from --e3 instead
+           of being averaged with them (a stage rebuilt after the --e3 runs, e.g.
+           the TF32 fragment-load fix, issue 17)
 --out      output folder (default docs/figures/w04)
 
 Times: for every (stage CSV, N) each process run (one timestamp, `reps` rows)
@@ -403,6 +407,7 @@ def main():
     ap.add_argument("--cpu-run")
     ap.add_argument("--e6-run")
     ap.add_argument("--e3", nargs="*", default=[])
+    ap.add_argument("--e3-replace", nargs="*", default=[])
     ap.add_argument("--out", default="docs/figures/w04")
     a = ap.parse_args()
     gdir = os.path.join(a.gpu_run, "gpu_nsweep")
@@ -412,6 +417,8 @@ def main():
     gpu = load_sweep(gdir)
     cpu = load_sweep(os.path.join(a.cpu_run, "nsweep")) if a.cpu_run else None
     e3 = load_e3(a.e3)
+    if a.e3_replace:
+        e3.update(load_e3(a.e3_replace))
     clock = median_sm_clock(a.gpu_run)
     os.makedirs(a.out, exist_ok=True)
     made = [fig_e1(gpu, cpu, a.out, a.gpu_run, a.cpu_run), fig_e2(gpu, a.out, a.gpu_run),
