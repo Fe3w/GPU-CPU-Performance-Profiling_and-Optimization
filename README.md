@@ -83,7 +83,7 @@ W04 in more detail (N = 2048, GPU):
 ## Build and test
 
 ```bash
-git clone https://github.com/<you>/GPU-CPU-Performance-Profiling_and-Optimization.git
+git clone https://github.com/Fe3w/GPU-CPU-Performance-Profiling_and-Optimization.git
 cd GPU-CPU-Performance-Profiling_and-Optimization
 
 make legacy w04                        # W01-W03 and W04 binaries, into build/

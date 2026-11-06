@@ -2,7 +2,7 @@
 
 Measured during development, phase by phase, on the hardware in the README. These are the session results each phase
 was decided on. The final paired re-test of every stage (one session, one protocol) is in
-[`RESULTS_SUMMARY.md`](../RESULTS_SUMMARY.md) and supersedes the times below where they differ.
+[`RESULTS_SUMMARY.md`](RESULTS_SUMMARY.md) and supersedes the times below where they differ.
 W04 GPU numbers are medians of 3 interleaved rounds at the GPU's default 55 W power limit; W04 CPU numbers
 come from sessions in which the package reached ~97 °C, so differences below ~10–15% between sessions are not significant.
 

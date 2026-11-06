@@ -217,7 +217,7 @@ The measured-traffic Roofline for W04 (fusion moves points right, Tensor Cores m
 ## 11. How to reproduce
 
 ```bash
-git clone https://github.com/<you>/GPU-CPU-Performance-Profiling_and-Optimization.git
+git clone https://github.com/Fe3w/GPU-CPU-Performance-Profiling_and-Optimization.git
 cd GPU-CPU-Performance-Profiling_and-Optimization
 make legacy w04 && bash tests/test_w04_correctness.sh
 bash scripts/run_all.sh            # every stage of W01–W04 in one session, ~25 min

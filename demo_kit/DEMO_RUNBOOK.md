@@ -26,6 +26,8 @@ All paths and tools come from `demo.conf` and can be overridden from the environ
 
 ## 2. The day before
 
+From here on, commands run inside the kit folder (`cd demo_kit`).
+
 ```bash
 ./demo.sh check      # every binary, profiler, GPU, and which kernel ncu will catch
 ./prep.sh            # captures backup reports into profiling/demo/ (ncu needs sudo)
@@ -115,7 +117,7 @@ Optionally run `./demo.sh vtune-gui`, open **Bottom-up**, and double-click the h
 | Symptom | Do this on stage |
 |---|---|
 | `sudo` asks for a password mid-demo | Type it. Next time, run `sudo -v` beforehand. |
-| `==ERROR== ERR_NVGPUCTRPERM` | You forgot sudo for ncu. Re-run, or show the backup with `python3 tools/ncu_compare.py $NCU S1=../profiling/demo/W03_S1.ncu-rep S3=../profiling/demo/W03_S3.ncu-rep` |
+| `==ERROR== ERR_NVGPUCTRPERM` | ncu ran without root. Re-run with `sudo -v` first, or show the backup table: `python3 tools/ncu_compare.py "$(command -v ncu || ls -d /opt/nvidia/nsight-compute/*/ncu | tail -1)" S1=$(ls ../profiling/demo/W03_S1.ncu-rep*) S3=$(ls ../profiling/demo/W03_S3.ncu-rep*)` |
 | ncu profiles the wrong kernel | Show the backup table (above), then fix `NCU_KFILTER` afterwards |
 | VTune: "paranoid" or "ptrace" error | Show the backup result with `vtune -report summary -r ../profiling/demo/vtune_W03_S1` |
 | GUI doesn't open | Move to the screenshot slide. Don't debug on stage. |
@@ -125,8 +127,8 @@ Optionally run `./demo.sh vtune-gui`, open **Bottom-up**, and double-click the h
 ## 6. What the kit writes (nothing is ever overwritten)
 
 - `results/live/<timestamp>/*.csv` for every race run
-- `profiling/demo/live_<timestamp>_*.ncu-rep` and `vtune_live_<timestamp>_*` for every live profile
-- `profiling/demo/W03_S1.ncu-rep` … `vtune_W03_S3/`, the backups from `prep.sh`. Older backups move to `old_<timestamp>/`.
+- `profiling/demo/live_<timestamp>_*.ncu-rep(z)` (Nsight Compute 2026.3 writes `.ncu-repz`) and `vtune_live_<timestamp>_*` for every live profile
+- `profiling/demo/W03_S1.ncu-rep(z)` … `vtune_W03_S3/`, the backups from `prep.sh`. Older backups move to `old_<timestamp>/`.
 
 ## 7. GUI navigation and what each number means
 

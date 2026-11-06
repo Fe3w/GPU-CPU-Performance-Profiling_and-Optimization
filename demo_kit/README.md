@@ -21,7 +21,7 @@ cue). This file is the how-to.
 The kit uses the binaries of the repository it lives in, so a fresh clone works:
 
 ```bash
-git clone https://github.com/<you>/GPU-CPU-Performance-Profiling_and-Optimization.git
+git clone https://github.com/Fe3w/GPU-CPU-Performance-Profiling_and-Optimization.git
 cd GPU-CPU-Performance-Profiling_and-Optimization
 make legacy w04             # W01-W03 and W04 binaries, into build/
 ./demo_kit/demo.sh check    # every binary, ncu/vtune, GPU state, fusion backup
