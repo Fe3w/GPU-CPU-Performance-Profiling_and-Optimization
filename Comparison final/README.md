@@ -38,4 +38,4 @@ Everything needed to understand the project and check the CPU/GPU comparison, in
 | `runs/earlier_W01-W03/` | the October W01–W03 records (raw CSVs, processed summaries, demo CSVs) the final run is compared with |
 | **`scripts/make_graphs.py`** | regenerates `graphs/comparison/` from `data/` |
 
-Hardware: Intel Core i7-13650HX + NVIDIA RTX 4060 Laptop (55 W), Ubuntu 24.04, CUDA 13.4, driver 595.99. Final run: `20261106-151143`, commit `7f0e5f6`. The live demo kit that re-runs these benchmarks is `demo_kit/` at the repository root.
+Hardware: Intel Core i7-13650HX + NVIDIA RTX 4060 Laptop (55 W), Ubuntu 24.04, CUDA 13.4, driver 595.99. Final run: `20261106-151143`, commit `7f0e5f6`, public release tag `v1.1` (the first release, tag `v1.0`, is run `20261106-141652`). The live demo kit that re-runs these benchmarks is `demo_kit/` at the repository root.

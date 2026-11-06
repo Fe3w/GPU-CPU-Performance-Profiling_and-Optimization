@@ -26,7 +26,7 @@ Every workload follows the same ladder:
 
 ## Key results
 
-All numbers are from **one session** (run `20261106-151143`, commit `7f0e5f6`) that re-ran every stage of W01–W04 with the same protocol: 2 warm-ups, 20 timed iterations, 5 repetitions, mean ± SD; GPU stages in 3 interleaved rounds (median of the round means). **All 34 stage runs passed their correctness check.** The full tables (± SD, GFLOP/s or GB/s, speedup per step, error against double precision, clocks, comparison with earlier runs) are in [`docs/RESULTS_SUMMARY.md`](docs/RESULTS_SUMMARY.md) and [`docs/results/final_results.csv`](docs/results/final_results.csv).
+All numbers are from **one session** (release **v1.1**: run `20261106-151143`, commit `7f0e5f6`) that re-ran every stage of W01–W04 with the same protocol: 2 warm-ups, 20 timed iterations, 5 repetitions, mean ± SD; GPU stages in 3 interleaved rounds (median of the round means). **All 34 stage runs passed their correctness check.** The full tables (± SD, GFLOP/s or GB/s, speedup per step, error against double precision, clocks, comparison with earlier runs) are in [`docs/RESULTS_SUMMARY.md`](docs/RESULTS_SUMMARY.md) and [`docs/results/final_results.csv`](docs/results/final_results.csv).
 
 | Workload | Device | S1 → best stage | Speedup | Why |
 |---|---|---|---|---|
@@ -71,7 +71,16 @@ W04 in more detail (N = 2048, GPU):
 | W04 P0–P6 | harness and reference, CPU S1–S3, GPU S1/S2a/REF, fused S2b, Tensor Core S3, autotuning, profiling | done ([phase log](docs/results/W04_phase_results.md)) |
 | W04 P7 | live demo integration | done: [`demo_kit/`](demo_kit/README.md), runs from a clone |
 | P8 | final paired re-test of W01–W04, consolidated results, release | done: 34/34 stages correct, [`docs/RESULTS_SUMMARY.md`](docs/RESULTS_SUMMARY.md) |
-| After P8 | W03 GPU S3 kernel optimized (1.26× at N = 1024 in a paired A/B, correct at any N), demo kit runs from a clone, full re-test repeated | done: run `20261106-151143` |
+| After P8 | W03 GPU S3 kernel optimized (1.26× at N = 1024 in a paired A/B, correct at any N), demo kit runs from a clone, full re-test repeated | done: run `20261106-151143`, release v1.1 |
+
+## Releases
+
+| Tag | Content |
+|---|---|
+| `v1.1` | current: optimized W03 GPU S3 kernel, demo kit in the repository and runnable from a clone, full re-test `20261106-151143` (W03 GPU 5.2×) |
+| `v1.0` | first release: final paired re-test `20261106-141652` with the first W03 GPU S3 kernel (W03 GPU 4.2×) |
+
+`git checkout v1.0` gives the first release; its run is kept in `Comparison final/runs/final/20261106-141652_previous/`.
 
 ## Requirements
 

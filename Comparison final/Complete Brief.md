@@ -1,6 +1,6 @@
 # Complete Brief — CPU vs GPU Performance: Profiling and Optimization
 
-*Final state: 6 November 2026. Final measurements: run `20261106-151143` (commit `7f0e5f6`), which repeats the first release run `20261106-141652` after the W03 GPU S3 kernel was optimized. Every number below is measured on the one machine in §3 unless it is labelled otherwise.*
+*Final state: 6 November 2026. Final measurements: run `20261106-151143` (commit `7f0e5f6`, public release tag **v1.1**), which repeats the first release run `20261106-141652` after the W03 GPU S3 kernel was optimized. Every number below is measured on the one machine in §3 unless it is labelled otherwise.*
 
 ---
 
@@ -78,7 +78,7 @@ W01–W03 each show one behaviour (memory-bound, reduction-bound, compute-bound)
 | W04 P6 | profiling E3–E8 (DRAM bytes, stall reasons, launch gaps, CPU counters), hypotheses H1–H4, plots; follow-up: TF32 fragment-load fix (1.2–1.35×), equal-clock check | verdicts in §6.4 |
 | W04 P7 | live demo kit: race of all stages, live Nsight Compute fusion comparison | live fusion: 31× fewer DRAM bytes, fusion alone 1.16× |
 | **P8** | **final paired re-test of W01–W04 in one session**, consolidated results, release README v1.0 | 34/34 correct; three fixes found and made on the way (§8) |
-| After P8 | W03 GPU S3 kernel optimized (§8); demo kit made to run from a clone and published; full re-test repeated (`20261106-151143`) | W03 GPU S3 1.26× faster in a paired A/B; 34/34 correct |
+| After P8 | W03 GPU S3 kernel optimized (§8); demo kit made to run from a clone and published; full re-test repeated (`20261106-151143`), release v1.1 | W03 GPU S3 1.26× faster in a paired A/B; 34/34 correct |
 
 ## 6. Results (final run `20261106-151143`)
 
