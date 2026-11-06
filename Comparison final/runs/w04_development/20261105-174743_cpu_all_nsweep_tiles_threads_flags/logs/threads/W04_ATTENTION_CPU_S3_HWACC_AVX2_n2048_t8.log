@@ -1,0 +1,14 @@
+level 1 thread 0x79d851ed57c0 affinity 0-1
+level 1 thread 0x79d8507fb6c0 affinity 2-3
+level 1 thread 0x79d84fffa6c0 affinity 4-5
+level 1 thread 0x79d84f7f96c0 affinity 6-7
+level 1 thread 0x79d84eff86c0 affinity 8-9
+level 1 thread 0x79d84e7f76c0 affinity 10-11
+level 1 thread 0x79d84dff66c0 affinity 12
+level 1 thread 0x79d84d7f56c0 affinity 13
+W04_ATTENTION_CPU_S3_HWACC_AVX2  git=4fcb71fd806c  threads=8
+flags   : g++ -O3 -std=c++17 -fopenmp -Wall -Wextra -mavx2 -mfma
+check   : main max_abs=1.311e-07 max_rel=2.057e-06 nonfinite=0 | plain max_rel=2.057e-06 | rowsum max_abs=2.682e-06 nonfinite=0 | elem_rel(diag)=4.696e-05 | tol=1e-04
+summary : W04_ATTENTION_CPU_S3_HWACC_AVX2 n=2048 bh=8 d=64 iters=20 reps=5 warmup=2 seed=42 input=normal br=32 bc=64 | 19.9198 ± 0.0429 ms | 431.2 GFLOP/s | FP32
+csv     : results/raw/W04_ATTENTION/20261105-174743/threads/W04_ATTENTION_CPU_S3_HWACC_AVX2.csv
+Correct : YES

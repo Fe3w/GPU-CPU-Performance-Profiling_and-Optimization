@@ -1,0 +1,10 @@
+Function	CPU Time	CPU Time:Effective Time	CPU Time:Spin Time	CPU Time:Overhead Time	Instructions Retired	Microarchitecture Usage(%)	Microarchitecture Usage:Microarchitecture Usage(%)	Microarchitecture Usage:CPI Rate	Module	Function (Full)	Source File	Start Address
+main._omp_fn.1	8.644122	8.644122	0.0	0.0	173563600000	63.9	63.9	0.128479	W03_GEMM_CPU_S2_SWOPT_CACHE_BLOCK	main._omp_fn.1	W03_GEMM_CPU_S2_SWOPT_CACHE_BLOCK.cpp	0x3d40
+main._omp_fn.0	0.871005	0.871005	0.0	0.0	17351600000	72.8	72.8	0.218493	W03_GEMM_CPU_S2_SWOPT_CACHE_BLOCK	main._omp_fn.0	W03_GEMM_CPU_S2_SWOPT_CACHE_BLOCK.cpp	0x3a10
+reference_gemm_subset	0.135845	0.135845	0.0	0.0	672000000	15.5	15.5	0.0	W03_GEMM_CPU_S2_SWOPT_CACHE_BLOCK	reference_gemm_subset	W03_GEMM_CPU_S2_SWOPT_CACHE_BLOCK.cpp	0x2e45
+[Outside any known module]	0.107877	0.107877	0.0	0.0	408800000	26.1	26.1	0.636986	[Unknown]	[Outside any known module]	[Unknown]	0x0
+__memset_avx2_unaligned_erms	0.004994	0.004994	0.0	0.0	0	3.8	3.8		libc.so.6	__memset_avx2_unaligned_erms	memset-vec-unaligned-erms.S	0x189780
+initialize_matrices	0.001998	0.001998	0.0	0.0	30800000	76.2	76.2	0.272727	W03_GEMM_CPU_S2_SWOPT_CACHE_BLOCK	initialize_matrices	W03_GEMM_CPU_S2_SWOPT_CACHE_BLOCK.cpp	0x2855
+elf_get_dynamic_info	0.000999	0.000999	0.0	0.0	0	0.0	0.0	0.0	ld-linux-x86-64.so.2	elf_get_dynamic_info	get-dynamic-info.h	0x836d
+start_thread	0.000999	0.000999	0.0	0.0	0	0.0	0.0	0.0	libc.so.6	start_thread	pthread_create.c	0x9c800
+main	0.0	0.0	0.0	0.0	2800000	50.0	50.0	0.0	W03_GEMM_CPU_S2_SWOPT_CACHE_BLOCK	main	W03_GEMM_CPU_S2_SWOPT_CACHE_BLOCK.cpp	0x2440

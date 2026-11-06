@@ -1,0 +1,146 @@
+Start (ns),Duration (ns),CorrId,GrdX,GrdY,GrdZ,BlkX,BlkY,BlkZ,Reg/Trd,StcSMem (MB),DymSMem (MB),Bytes (MB),Throughput (MB/s),SrcMemKd,DstMemKd,Device,Ctx,GreenCtx,Strm,Name
+471022651,85342,1302,,,,,,,,,,1.049,12286.165,Pageable,Device,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,[CUDA memcpy Host-to-Device]
+471139544,86430,1303,,,,,,,,,,1.049,12132.024,Pageable,Device,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,[CUDA memcpy Host-to-Device]
+471256885,89822,1304,,,,,,,,,,1.049,11673.797,Pageable,Device,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,[CUDA memcpy Host-to-Device]
+501527820,56671,1408,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+501620234,31423,1413,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+501726823,113022,1429,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+501840677,54078,1440,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+501895491,28704,1443,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+501924899,112573,1453,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+502055840,53790,1469,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+502110334,28960,1472,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+502140030,112509,1482,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+502253339,56095,1493,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+502310170,28927,1496,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+502339833,112445,1506,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+502453046,53887,1517,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+502507733,29055,1520,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+502537556,112670,1530,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+502650930,53822,1541,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+502705456,29024,1544,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+502735248,112541,1554,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+502848493,53887,1565,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+502903148,28767,1568,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+502932683,112573,1578,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+503046056,54175,1589,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+503101031,28767,1592,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+503130566,113022,1602,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+503244356,53918,1613,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+503299042,28896,1616,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+503328706,112669,1626,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+503442047,53759,1637,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+503496542,28543,1640,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+503525885,112701,1650,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+503639386,53791,1661,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+503693913,28543,1664,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+503723224,112542,1674,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+503836566,54014,1685,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+503891348,28672,1688,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+503920852,112605,1698,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+504034225,53759,1709,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+504088752,28927,1712,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+504118415,112573,1722,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+504231692,53823,1733,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+504286187,28959,1736,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+504315882,112574,1746,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+504429256,53758,1757,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+504483718,28960,1760,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+504513414,112541,1770,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+504626627,53759,1781,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+504681122,28511,1784,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+504710337,112477,1794,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+504823582,54143,1805,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+504878397,29023,1808,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+504908220,112542,1818,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+505021434,53950,1829,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+505076088,28544,1832,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+505105432,112605,1842,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+505218805,57599,1853,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+505277204,28415,1856,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+505306419,112605,1866,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+505419792,53919,1877,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+505474447,28575,1880,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+505503790,112606,1890,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+505617164,53950,1901,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+505671850,28864,1904,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+505701514,112701,1914,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+505814855,53983,1925,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+505869542,28831,1928,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+505899045,112541,1938,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+506066625,54015,1961,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+506122848,28607,1965,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+506153663,112541,1976,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+506278364,53951,1994,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+506334491,28639,1998,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+506365402,112541,2009,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+506489943,53951,2027,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+506546166,28543,2031,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+506576949,112477,2042,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+506701042,53919,2060,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+506757137,29119,2064,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+506788528,112509,2075,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+506912141,53791,2093,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+506968204,28671,2097,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+506999179,112573,2108,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+507127624,53695,2126,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+507183463,28799,2130,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+507214470,113821,2141,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+507339811,53855,2159,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+507395810,29055,2163,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+507427041,112541,2174,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+507551326,53951,2192,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+507607549,28511,2196,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+507638300,112573,2207,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+507762585,53759,2225,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+507820280,28767,2229,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+507851287,112605,2240,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+507975476,54015,2258,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+508039091,28703,2262,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+508070066,112509,2273,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+508193839,54015,2291,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+508250094,29375,2295,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+508281741,112509,2306,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+508406026,53727,2324,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+508461961,29247,2328,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+508493384,112541,2339,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+508617829,54015,2357,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+508674148,28639,2361,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+508704963,112413,2372,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+508828960,53759,2390,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+508885023,28927,2394,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+508916190,112509,2405,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+509040315,53759,2423,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+509096346,28959,2427,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+509127577,112669,2438,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+509251862,53791,2456,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+509307893,31999,2460,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+509342068,112541,2471,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+509466129,53887,2489,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+509522192,28991,2493,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+509553423,112605,2504,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+509677644,53951,2522,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+509733835,28671,2526,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+509764714,112637,2537,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+509888807,53887,2555,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+509945030,29183,2559,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+509976677,112477,2570,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+510158433,54110,2588,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+510214815,28672,2592,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+510245759,112733,2603,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+512359213,88286,2615,,,,,,,,,,1.049,11876.172,Pageable,Device,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,[CUDA memcpy Host-to-Device]
+512479626,86654,2616,,,,,,,,,,1.049,12100.567,Pageable,Device,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,[CUDA memcpy Host-to-Device]
+512597479,89918,2617,,,,,,,,,,1.049,11661.214,Pageable,Device,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,[CUDA memcpy Host-to-Device]
+512690181,2656,2618,,,,,,,,,,1.049,394795.155,Device,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,[CUDA memset]
+512693605,53919,2628,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+512748292,28415,2631,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+512777475,112605,2641,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+512902240,90110,2645,,,,,,,,,,1.049,11636.048,Device,Pageable,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,[CUDA memcpy Device-to-Host]
+525130880,103678,2646,,,,,,,,,,1.049,10113.516,Pageable,Device,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,[CUDA memcpy Host-to-Device]
+525277021,91933,2647,,,,,,,,,,1.049,11405.361,Pageable,Device,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,[CUDA memcpy Host-to-Device]
+525409785,96126,2648,,,,,,,,,,1.049,10908.336,Pageable,Device,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,[CUDA memcpy Host-to-Device]
+525514071,2656,2649,,,,,,,,,,1.049,394795.155,Device,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,[CUDA memset]
+525517527,53855,2659,4,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_tn
+525572214,28639,2662,512,1,1,256,1,1,35,0.000,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,"w04::softmax_rows_warp(float *, unsigned long, int)"
+525601525,112605,2672,1,4,8,256,1,1,118,0.017,0.000,,,,,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,ampere_sgemm_128x128_nn
+525721458,94270,2676,,,,,,,,,,1.049,11122.246,Device,Pageable,NVIDIA GeForce RTX 4060 Laptop GPU (0),1,,7,[CUDA memcpy Device-to-Host]

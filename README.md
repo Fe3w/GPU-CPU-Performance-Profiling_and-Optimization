@@ -39,6 +39,8 @@ All numbers are from **one session** (run `20261106-141652`, commit `5b61fa3`) t
 | W04 Attention, N = 2048 | GPU | 32.0 → 0.592 ms (S3 FP16) | **54.0×** | Kernel quality 3.39× · fusion + register tiling 3.13× · FP16 Tensor Cores 5.10×; 14.5 TFLOP/s |
 | | CPU | 1206 → 12.9 ms (S3, 20 threads) | **93.2×** | Fusion + blocking + threads 31.7×, then AVX2/FMA and a vector `exp` 2.94× |
 
+**Complete comparison package:** [`Comparison final/`](Comparison%20final/README.md) holds the [Complete Brief](Comparison%20final/Complete%20Brief.md) (goals, method, results, explanations, limitations), every relevant run as CSV, the profiler exports, and comparison graphs.
+
 CPU vs GPU in the same session: the best GPU stage is 4.3× (W01), 3.1× (W02), 42.6× (W03) and 21.8× (W04, N = 2048) faster than the best CPU stage.
 
 W04 in more detail (N = 2048, GPU):
@@ -164,6 +166,7 @@ tests/                W04 correctness tests
 scripts/              run_all.sh (final re-test), W04 sweeps and profiling
 tools/                summaries and plots
 docs/                 results summary, W04 plan, figures
+Comparison final/     complete brief, consolidated data, all relevant runs, comparison graphs
 ```
 
 File names encode the stage: `W04_ATTENTION_GPU_S2b_SWOPT_FUSED.cu` = workload 4, GPU, stage 2b, software optimization, fused.

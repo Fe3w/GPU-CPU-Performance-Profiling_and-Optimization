@@ -1,0 +1,2 @@
+experiment_id,workload,platform,stage,variant,N,threads,iterations,repetition,runtime_ms,gflops,bandwidth_gbs,flops,algorithmic_bytes,operational_intensity,result,reference_result,relative_error_pct,execution_valid,compiler,compiler_flags
+W02_DOT_PRODUCT_CPU_S2_SWOPT_OMP_T6_R01,W02_DOT_PRODUCT,CPU,S2_SWOPT,OMP_STATIC_SCALAR,33554432,6,20,1,4.464139,15.032880,60.131521,67108864.000000,268435456.000000,0.250000,9263599.000000,9301967.501494,0.412477,YES,g++,"-O3 -fopenmp -fno-tree-vectorize -fno-tree-slp-vectorize -std=c++17 -g"

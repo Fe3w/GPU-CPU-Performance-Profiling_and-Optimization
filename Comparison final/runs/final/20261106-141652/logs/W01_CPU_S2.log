@@ -1,0 +1,42 @@
+Repetition 1/5
+  N                 : 33554432
+  Average time (ms) : 7.7153
+  GFLOP/s            : 4.3491
+  Bandwidth (GB/s)   : 52.1887
+  Operational Intensity: 0.0833 FLOP/Byte
+  Correct            : YES
+
+Repetition 2/5
+  N                 : 33554432
+  Average time (ms) : 7.7190
+  GFLOP/s            : 4.3470
+  Bandwidth (GB/s)   : 52.1637
+  Operational Intensity: 0.0833 FLOP/Byte
+  Correct            : YES
+
+Repetition 3/5
+  N                 : 33554432
+  Average time (ms) : 7.7193
+  GFLOP/s            : 4.3468
+  Bandwidth (GB/s)   : 52.1620
+  Operational Intensity: 0.0833 FLOP/Byte
+  Correct            : YES
+
+Repetition 4/5
+  N                 : 33554432
+  Average time (ms) : 7.9068
+  GFLOP/s            : 4.2437
+  Bandwidth (GB/s)   : 50.9249
+  Operational Intensity: 0.0833 FLOP/Byte
+  Correct            : YES
+
+Repetition 5/5
+  N                 : 33554432
+  Average time (ms) : 7.9851
+  GFLOP/s            : 4.2021
+  Bandwidth (GB/s)   : 50.4255
+  Operational Intensity: 0.0833 FLOP/Byte
+  Correct            : YES
+
+CSV saved to:
+results/raw/FINAL/20261106-141652/csv/W01_CPU_S2.csv

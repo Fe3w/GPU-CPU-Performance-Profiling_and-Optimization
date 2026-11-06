@@ -1,0 +1,12 @@
+# started on Fri Nov  6 10:38:41 2026
+
+19365670975,,cpu_core/cycles/,4757564485,99.00,,
+37924213199,,cpu_core/instructions/,4757564485,99.00,,
+147299562,,cpu_core/mem_load_retired.l1_miss/,4757564485,99.00,,
+144642580,,cpu_core/mem_load_retired.l2_hit/,4757564485,99.00,,
+2658133,,cpu_core/mem_load_retired.l2_miss/,4757564485,99.00,,
+165763,,cpu_core/mem_load_retired.l3_miss/,4757564485,99.00,,
+12026416579,,cpu_atom/cycles/,3159758060,88.00,,
+24574856665,,cpu_atom/instructions/,3159758060,88.00,,
+56960264,,cpu_atom/mem_load_uops_retired.l2_hit/,3159758060,88.00,,
+2752726,,cpu_atom/mem_load_uops_retired.l2_miss/,3159758060,88.00,,

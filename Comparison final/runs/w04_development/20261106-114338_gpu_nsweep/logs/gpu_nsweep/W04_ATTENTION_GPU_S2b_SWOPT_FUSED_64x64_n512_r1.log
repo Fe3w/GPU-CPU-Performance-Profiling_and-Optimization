@@ -1,0 +1,9 @@
+W04_ATTENTION_GPU_S2b_SWOPT_FUSED  git=c9800bf91287  device=NVIDIA GeForce RTX 4060 Laptop GPU (sm_89)
+flags   : nvcc -O3 -std=c++17 -lineinfo -gencode arch=compute_89,code=sm_89 -Xcompiler -fopenmp -Xcompiler -Wall
+config  : Br=64 (flag) Bc=64 (flag) warps=8 (flag)
+tile    : Br=64 Bc=64, 256 threads (8 warps), 66304 B dynamic shared memory per block
+phases  : fused 0.2114 ms (100.0%)  [separate pass, events between kernels, not the benchmark time]
+check   : main max_abs=1.131e-07 max_rel=1.145e-06 nonfinite=0 | plain max_rel=1.145e-06 | rowsum max_abs=1.192e-06 nonfinite=0 | elem_rel(diag)=4.229e-05 | tol=1e-04
+summary : W04_ATTENTION_GPU_S2b_SWOPT_FUSED n=512 bh=8 d=64 iters=20 reps=5 warmup=2 seed=42 input=normal br=64 bc=64 warps=8 | 0.2100 ± 0.0000 ms | 2557.1 GFLOP/s | FP32
+csv     : results/raw/W04_ATTENTION/20261106-114338/gpu_nsweep/W04_ATTENTION_GPU_S2b_SWOPT_FUSED_64x64.csv
+Correct : YES

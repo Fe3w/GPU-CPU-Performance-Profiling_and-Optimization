@@ -1,0 +1,11 @@
+date      : 2026-11-06T10:37:26+05:30
+command   : scripts/w04_profile.sh e8 (QUICK=0)
+build sha : d6344f5877e8
+gpu       : NVIDIA GeForce RTX 4060 Laptop GPU, 210 MHz, 4.78 W, 54, 55.00 W
+ncu       : Version 2026.3.0.0 (build 38525999) (public-release)
+nsys      : NVIDIA Nsight Systems version 2026.3.2.313-263238521929v0
+perf      : perf version 7.0.14
+paranoid  : 0
+vtune     : Intel(R) VTune(TM) Profiler 2026.6.0 (build 633341) Command Line Tool
+perf g1   : cpu_core/cycles/,cpu_core/instructions/,cpu_core/mem_load_retired.l1_miss/,cpu_core/mem_load_retired.l2_hit/,cpu_core/mem_load_retired.l2_miss/,cpu_core/mem_load_retired.l3_miss/,cpu_atom/cycles/,cpu_atom/instructions/,cpu_atom/mem_load_uops_retired.l2_hit/,cpu_atom/mem_load_uops_retired.l2_miss/
+perf g2   : cpu_core/cycles/,cpu_core/instructions/,cpu_core/fp_arith_inst_retired.scalar_single/,cpu_core/fp_arith_inst_retired.128b_packed_single/,cpu_core/fp_arith_inst_retired.256b_packed_single/,cpu_atom/cycles/,cpu_atom/instructions/

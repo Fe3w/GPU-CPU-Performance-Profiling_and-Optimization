@@ -1,0 +1,4 @@
+source    : ./demo_kit/demo.sh fusion (live, run by the user); the .ncu-repz reports stay in the private demo kit folder
+build     : git_sha 018ca279f4c4 2026-11-06T12:50:59+0530
+ncu       : Version 2026.3.0.0 (build 38525999) (public-release)
+timing    : demo kit live folder (private), fusion/ subfolder of run 20261106_125049

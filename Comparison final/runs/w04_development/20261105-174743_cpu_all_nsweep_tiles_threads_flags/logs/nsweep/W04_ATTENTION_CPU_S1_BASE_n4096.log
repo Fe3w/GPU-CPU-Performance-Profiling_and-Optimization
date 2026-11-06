@@ -1,0 +1,6 @@
+W04_ATTENTION_CPU_S1_BASE  git=4fcb71fd806c  threads=1
+flags   : g++ -O2 -std=c++17 -fopenmp -Wall -Wextra
+check   : main max_abs=1.542e-07 max_rel=3.931e-06 nonfinite=0 | plain max_rel=3.931e-06 | rowsum max_abs=3.576e-06 nonfinite=0 | elem_rel(diag)=3.508e-05 | tol=1e-04
+summary : W04_ATTENTION_CPU_S1_BASE n=4096 bh=8 d=64 iters=1 reps=3 warmup=1 seed=42 input=normal | 4516.6060 ± 6.3131 ms | 7.6 GFLOP/s | FP32
+csv     : results/raw/W04_ATTENTION/20261105-174743/nsweep/W04_ATTENTION_CPU_S1_BASE.csv
+Correct : YES

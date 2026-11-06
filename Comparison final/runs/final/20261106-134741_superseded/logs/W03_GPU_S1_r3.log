@@ -1,0 +1,51 @@
+========================================
+W03 GEMM GPU S1 BASELINE NAIVE
+========================================
+N                     : 1024
+Iterations            : 20
+Repetitions           : 5
+Warmup                : 2
+Block size            : 16 x 16
+FLOPs                 : 2.14748e+09
+Algorithmic bytes     : 1.25829e+07
+Operational Intensity : 170.667 FLOP/Byte
+
+Repetition 1/5
+  Average time (ms) : 2.1853
+  GFLOP/s           : 982.7035
+  Bandwidth (GB/s)  : 5.7580
+  Operational Intensity: 170.6667 FLOP/Byte
+
+Repetition 2/5
+  Average time (ms) : 2.2367
+  GFLOP/s           : 960.1237
+  Bandwidth (GB/s)  : 5.6257
+  Operational Intensity: 170.6667 FLOP/Byte
+
+Repetition 3/5
+  Average time (ms) : 2.4366
+  GFLOP/s           : 881.3409
+  Bandwidth (GB/s)  : 5.1641
+  Operational Intensity: 170.6667 FLOP/Byte
+
+Repetition 4/5
+  Average time (ms) : 2.6764
+  GFLOP/s           : 802.3785
+  Bandwidth (GB/s)  : 4.7014
+  Operational Intensity: 170.6667 FLOP/Byte
+
+Repetition 5/5
+  Average time (ms) : 2.6621
+  GFLOP/s           : 806.6996
+  Bandwidth (GB/s)  : 4.7268
+  Operational Intensity: 170.6667 FLOP/Byte
+
+========================================
+SUMMARY
+========================================
+Mean time (ms)      : 2.4394 ± 0.2299
+Mean GFLOP/s        : 880.3310
+Reference checksum  : 16743551.1629
+Output checksum     : 16743551.2090
+Max rel error (%)   : 0.0002
+Correct             : YES

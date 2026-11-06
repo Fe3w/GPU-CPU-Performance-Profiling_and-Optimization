@@ -1,0 +1,23 @@
+level 1 thread 0x755749a897c0 affinity 0-1
+level 1 thread 0x755748bfb6c0 affinity 2-3
+level 1 thread 0x7557483fa6c0 affinity 4-5
+level 1 thread 0x755747bf96c0 affinity 6-7
+level 1 thread 0x7557473f86c0 affinity 8-9
+level 1 thread 0x755746bf76c0 affinity 10-11
+level 1 thread 0x7557463f66c0 affinity 12
+level 1 thread 0x755745bf56c0 affinity 13
+level 1 thread 0x7557453f46c0 affinity 14
+level 1 thread 0x755744bf36c0 affinity 15
+level 1 thread 0x7557443f26c0 affinity 16
+level 1 thread 0x755743bf16c0 affinity 17
+level 1 thread 0x7557433f06c0 affinity 18
+level 1 thread 0x755742bef6c0 affinity 19
+level 1 thread 0x7557423ee6c0 affinity 0-1
+level 1 thread 0x755741bed6c0 affinity 2-3
+level 1 thread 0x7557413ec6c0 affinity 4-5
+W04_ATTENTION_CPU_S2_SWOPT_BLOCKED_OMP  git=4fcb71fd806c  threads=17
+flags   : g++ -O3 -std=c++17 -fopenmp -Wall -Wextra
+check   : main max_abs=1.433e-07 max_rel=2.076e-06 nonfinite=0 | plain max_rel=2.076e-06 | rowsum max_abs=2.027e-06 nonfinite=0 | elem_rel(diag)=4.849e-05 | tol=1e-04
+summary : W04_ATTENTION_CPU_S2_SWOPT_BLOCKED_OMP n=1024 bh=8 d=64 iters=20 reps=5 warmup=2 seed=42 input=normal br=32 bc=64 | 11.3609 ± 0.2548 ms | 189.0 GFLOP/s | FP32
+csv     : results/raw/W04_ATTENTION/20261105-174743/threads/W04_ATTENTION_CPU_S2_SWOPT_BLOCKED_OMP.csv
+Correct : YES

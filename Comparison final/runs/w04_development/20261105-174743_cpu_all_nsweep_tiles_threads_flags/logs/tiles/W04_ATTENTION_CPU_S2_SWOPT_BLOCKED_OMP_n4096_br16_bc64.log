@@ -1,0 +1,6 @@
+W04_ATTENTION_CPU_S2_SWOPT_BLOCKED_OMP  git=4fcb71fd806c  threads=20
+flags   : g++ -O3 -std=c++17 -fopenmp -Wall -Wextra
+check   : main max_abs=9.787e-08 max_rel=2.495e-06 nonfinite=0 | plain max_rel=2.495e-06 | rowsum max_abs=3.636e-06 nonfinite=0 | elem_rel(diag)=4.397e-05 | tol=1e-04
+summary : W04_ATTENTION_CPU_S2_SWOPT_BLOCKED_OMP n=4096 bh=8 d=64 iters=20 reps=5 warmup=2 seed=42 input=normal br=16 bc=64 | 234.7846 ± 0.5249 ms | 146.3 GFLOP/s | FP32
+csv     : results/raw/W04_ATTENTION/20261105-174743/tiles/W04_ATTENTION_CPU_S2_SWOPT_BLOCKED_OMP.csv
+Correct : YES

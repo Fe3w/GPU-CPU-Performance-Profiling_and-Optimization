@@ -1,0 +1,10 @@
+
+W01 GPU S1 BASE NAIVE
+N              : 33554432
+Blocks         : 131072
+Threads/block  : 256
+Runtime/iter   : 2.09485 ms
+GFLOP/s        : 16.0176
+Bandwidth      : 192.211 GB/s
+Operational Intensity: 0.0833333 FLOP/Byte
+Correct        : YES

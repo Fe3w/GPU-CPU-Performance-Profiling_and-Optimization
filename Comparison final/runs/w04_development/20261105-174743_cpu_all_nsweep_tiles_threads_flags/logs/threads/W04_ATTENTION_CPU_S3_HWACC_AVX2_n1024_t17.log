@@ -1,0 +1,23 @@
+level 1 thread 0x7057fde7e7c0 affinity 0-1
+level 1 thread 0x7057fcffb6c0 affinity 2-3
+level 1 thread 0x7057fc7fa6c0 affinity 4-5
+level 1 thread 0x7057fbff96c0 affinity 6-7
+level 1 thread 0x7057fb7f86c0 affinity 8-9
+level 1 thread 0x7057faff76c0 affinity 10-11
+level 1 thread 0x7057fa7f66c0 affinity 12
+level 1 thread 0x7057f9ff56c0 affinity 13
+level 1 thread 0x7057f97f46c0 affinity 14
+level 1 thread 0x7057f8ff36c0 affinity 15
+level 1 thread 0x7057f87f26c0 affinity 16
+level 1 thread 0x7057f7ff16c0 affinity 17
+level 1 thread 0x7057f77f06c0 affinity 18
+level 1 thread 0x7057f6fef6c0 affinity 19
+level 1 thread 0x7057f67ee6c0 affinity 0-1
+level 1 thread 0x7057f5fed6c0 affinity 2-3
+level 1 thread 0x7057f57ec6c0 affinity 4-5
+W04_ATTENTION_CPU_S3_HWACC_AVX2  git=4fcb71fd806c  threads=17
+flags   : g++ -O3 -std=c++17 -fopenmp -Wall -Wextra -mavx2 -mfma
+check   : main max_abs=1.297e-07 max_rel=1.879e-06 nonfinite=0 | plain max_rel=1.879e-06 | rowsum max_abs=2.027e-06 nonfinite=0 | elem_rel(diag)=5.177e-05 | tol=1e-04
+summary : W04_ATTENTION_CPU_S3_HWACC_AVX2 n=1024 bh=8 d=64 iters=20 reps=5 warmup=2 seed=42 input=normal br=32 bc=64 | 3.8443 ± 0.0786 ms | 558.6 GFLOP/s | FP32
+csv     : results/raw/W04_ATTENTION/20261105-174743/threads/W04_ATTENTION_CPU_S3_HWACC_AVX2.csv
+Correct : YES

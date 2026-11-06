@@ -1,0 +1,54 @@
+========================================
+W03 GEMM CPU S3 AVX2/FMA
+========================================
+N                     : 1024
+Iterations            : 20
+Repetitions           : 5
+Warmup                : 2
+Block size            : 128
+FLOPs                 : 2.14748e+09
+Algorithmic bytes     : 1.25829e+07
+Operational Intensity : 170.667 FLOP/Byte
+
+Repetition 1/5
+  Average time (ms) : 25.5910
+  GFLOP/s           : 83.9156
+  Bandwidth (GB/s)  : 0.4917
+  Operational Intensity: 170.6667 FLOP/Byte
+
+Repetition 2/5
+  Average time (ms) : 25.5711
+  GFLOP/s           : 83.9808
+  Bandwidth (GB/s)  : 0.4921
+  Operational Intensity: 170.6667 FLOP/Byte
+
+Repetition 3/5
+  Average time (ms) : 25.5773
+  GFLOP/s           : 83.9606
+  Bandwidth (GB/s)  : 0.4920
+  Operational Intensity: 170.6667 FLOP/Byte
+
+Repetition 4/5
+  Average time (ms) : 25.6063
+  GFLOP/s           : 83.8655
+  Bandwidth (GB/s)  : 0.4914
+  Operational Intensity: 170.6667 FLOP/Byte
+
+Repetition 5/5
+  Average time (ms) : 25.6141
+  GFLOP/s           : 83.8400
+  Bandwidth (GB/s)  : 0.4913
+  Operational Intensity: 170.6667 FLOP/Byte
+
+========================================
+SUMMARY
+========================================
+Mean time (ms)      : 25.5919 ± 0.0183
+Mean GFLOP/s        : 83.9125
+Reference checksum  : 16743551.1629
+Output checksum     : 16743551.2090
+Max rel error (%)   : 0.0002
+Correct             : YES
+
+CSV saved to:
+results/raw/FINAL/20261106-134741/csv/W03_CPU_S3.csv

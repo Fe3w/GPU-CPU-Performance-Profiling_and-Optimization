@@ -1,0 +1,2 @@
+workload,stage,variant,device,precision,n,bh,d,iters,rep,runtime_ms,gflops,alg_bytes,max_abs_err,max_rel_err,correct,peak_mem_bytes,br,bc,compiler_flags,timestamp,git_sha,seed,input_case,warmup,reps,threads,prep_ms,max_rel_err_main,warps
+W04_ATTENTION,S2a_SWOPT,UNFUSED,GPU,FP32,2048,8,64,1,1,335.142395,25.6307012,16777216,1.11304322e-07,1.74668938e-06,YES,150994944,0,0,"nvcc -O3 -std=c++17 -lineinfo -gencode arch=compute_89,code=sm_89 -Xcompiler -fopenmp -Xcompiler -Wall",2026-11-06T12:50:56+0530,018ca279f4c4,42,normal,0,1,0,,1.74668938e-06,0

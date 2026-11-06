@@ -1,0 +1,6 @@
+W04_ATTENTION_CPU_S3_HWACC_AVX2  git=4fcb71fd806c  threads=20
+flags   : g++ -O3 -ffast-math -std=c++17 -fopenmp -Wall -Wextra -mavx2 -mfma
+check   : main max_abs=5.891e-08 max_rel=5.742e-07 nonfinite=0 | plain max_rel=5.742e-07 | rowsum max_abs=7.749e-07 nonfinite=0 | elem_rel(diag)=3.666e-05 | tol=1e-04
+summary : W04_ATTENTION_CPU_S3_HWACC_AVX2 n=256 bh=2 d=64 iters=1 reps=1 warmup=0 seed=42 input=normal br=32 bc=64 | 1.3436 ± 0.0000 ms | 25.0 GFLOP/s | FP32
+csv     : results/raw/W04_ATTENTION/20261105-174743/flags_check/W04_ATTENTION_CPU_S3_HWACC_AVX2.csv
+Correct : YES

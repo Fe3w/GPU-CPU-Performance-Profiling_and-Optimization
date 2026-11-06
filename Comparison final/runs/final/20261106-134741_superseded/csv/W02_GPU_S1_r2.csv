@@ -1,0 +1,2 @@
+N,iterations,repetitions,warmup,block_size,operational_intensity,result,reference_result,relative_error_pct,mean_time_ms,stddev_time_ms,mean_gflops,stddev_gflops,mean_bandwidth_gbs,stddev_bandwidth_gbs,correct
+33554432,20,5,2,256,0.25000000,9301967.50149365,9301967.50149371,0.00000000,43.57867188,0.00476009,1.53994745,0.00016821,6.15978980,0.00067284,YES

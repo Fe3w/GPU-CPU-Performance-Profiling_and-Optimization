@@ -1,0 +1,2 @@
+experiment_id,workload,platform,stage,variant,N,threads,block_size,iterations,repetition,runtime_ms,gflops,bandwidth_gbs,flops,algorithmic_bytes,operational_intensity,correct,compiler,compiler_flags
+W01_VECTOR_ADD_GPU_S2_SWOPT_COALESCED_B128_R01,W01_VECTOR_ADD,GPU,S2_SWOPT,COALESCED,33554432,1,128,20,1,1.821360,18.422734,221.072814,33554432.000000,402653184.000000,0.083333,YES,nvcc,"-O3 -std=c++17 -lineinfo -gencode arch=compute_89,code=sm_89"

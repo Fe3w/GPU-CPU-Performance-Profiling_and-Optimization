@@ -1,0 +1,3 @@
+workload,stage,variant,device,precision,n,bh,d,iters,rep,runtime_ms,gflops,alg_bytes,max_abs_err,max_rel_err,correct,peak_mem_bytes,br,bc,compiler_flags,timestamp,git_sha,seed,input_case,warmup,reps,threads,prep_ms,max_rel_err_main,warps
+W04_ATTENTION,S1_BASE,SCALAR_UNFUSED,CPU,FP32,2048,8,64,6,1,1217.64582,7.05454282,16777216,1.69226392e-07,2.65565556e-06,YES,114630656,0,0,g++ -O2 -std=c++17 -fopenmp -Wall -Wextra,2026-11-06T10:38:16+0530,d6344f5877e8,42,normal,0,1,1,,2.65565556e-06,0
+W04_ATTENTION,S1_BASE,SCALAR_UNFUSED,CPU,FP32,4096,8,64,3,1,4608.06332,7.45643799,33554432,1.54221792e-07,3.93107321e-06,YES,182550528,0,0,g++ -O2 -std=c++17 -fopenmp -Wall -Wextra,2026-11-06T10:40:30+0530,d6344f5877e8,42,normal,0,1,1,,3.93107321e-06,0

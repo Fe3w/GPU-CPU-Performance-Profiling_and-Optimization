@@ -1,0 +1,8 @@
+W04_ATTENTION_GPU_REF_CUBLAS  git=c9800bf91287  device=NVIDIA GeForce RTX 4060 Laptop GPU (sm_89)
+flags   : nvcc -O3 -std=c++17 -lineinfo -gencode arch=compute_89,code=sm_89 -Xcompiler -fopenmp -Xcompiler -Wall
+cublas  : version 130700, CUBLAS_DEFAULT_MATH (FP32, no TF32)
+phases  : qk 0.9152 ms (24.6%) | softmax 1.1868 ms (31.8%) | pv 1.6254 ms (43.6%)  [separate pass, events between kernels, not the benchmark time]
+check   : main max_abs=1.113e-07 max_rel=1.747e-06 nonfinite=0 | plain max_rel=1.747e-06 | rowsum max_abs=2.325e-06 nonfinite=0 | elem_rel(diag)=4.385e-05 | tol=1e-04
+summary : W04_ATTENTION_GPU_REF_CUBLAS n=2048 bh=8 d=64 iters=20 reps=5 warmup=2 seed=42 input=normal | 3.7239 ± 0.0069 ms | 2306.7 GFLOP/s | FP32
+csv     : results/raw/W04_ATTENTION/20261106-115441/gpu_nsweep/W04_ATTENTION_GPU_REF_CUBLAS.csv
+Correct : YES

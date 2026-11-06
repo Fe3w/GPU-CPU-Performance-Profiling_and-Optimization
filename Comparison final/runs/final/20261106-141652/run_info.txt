@@ -1,0 +1,17 @@
+date        : 2026-11-06T14:17:28+05:30
+command     : scripts/run_all.sh  --only w01,w02,w03,w04
+tree sha    : 5b61fa315aae
+w04 build   : 5b61fa315aae
+protocol    : warmup=2 iters=20 reps=5 rounds(GPU)=3 cool-down<=70C (max 120s)
+sizes       : W01/W02 N=33554432  W03 N=1024  W04 N=1024 2048 --bh 8 --d 64
+threads     : W01 6  W02 6  W03 8  W04 20  (OMP_PROC_BIND=close OMP_PLACES=cores)
+compiler    : g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0 / Build cuda_13.4.r13.4/compiler.38657139_0
+cpu         : 13th Gen Intel(R) Core(TM) i7-13650HX
+kernel      : 7.0.0-42-generic
+ac online   : 1
+governor    : powersave
+epp         : performance
+pkg temp    : 57 C
+gpu         : NVIDIA GeForce RTX 4060 Laptop GPU, 595.99.02, 210 MHz, 405 MHz, 5.11 W, 47
+gpu limits  : 55.00 W, 115.00 W, 3105 MHz (enforced, max power; max SM clock)
+gpu procs   : 

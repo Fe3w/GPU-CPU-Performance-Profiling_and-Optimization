@@ -1,0 +1,7 @@
+W04_ATTENTION_GPU_S2a_SWOPT_UNFUSED  git=5b61fa315aae  device=NVIDIA GeForce RTX 4060 Laptop GPU (sm_89)
+flags   : nvcc -O3 -std=c++17 -lineinfo -gencode arch=compute_89,code=sm_89 -Xcompiler -fopenmp -Xcompiler -Wall
+phases  : qk 1.0406 ms (46.1%) | softmax 0.1942 ms (8.6%) | pv 1.0223 ms (45.3%)  [separate pass, events between kernels, not the benchmark time]
+check   : main max_abs=1.131e-07 max_rel=1.639e-06 nonfinite=0 | plain max_rel=1.639e-06 | rowsum max_abs=1.788e-06 nonfinite=0 | elem_rel(diag)=5.496e-05 | tol=1e-04
+summary : W04_ATTENTION_GPU_S2a_SWOPT_UNFUSED n=1024 bh=8 d=64 iters=20 reps=5 warmup=2 seed=42 input=normal | 2.2001 ± 0.1352 ms | 976.1 GFLOP/s | FP32
+csv     : results/raw/FINAL/20261106-141652/csv/W04_GPU_S2a_N1024_r2.csv
+Correct : YES

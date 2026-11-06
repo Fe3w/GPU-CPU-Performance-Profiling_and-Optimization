@@ -1,0 +1,5 @@
+"ID","Process ID","Process Name","Host Name","Kernel Name","Context","Stream","Block Size","Grid Size","Device","CC","Section Name","Metric Name","Metric Unit","Metric Value"
+"0","69695","W04_ATTENTION_GPU_REF_CUBLAS","127.0.0.1","softmax_rows_warp(float *, unsigned long, int)","1","7","(256, 1, 1)","(2048, 1, 1)","0","8.9","Command line profiler metrics","dram__bytes_read.sum","Mbyte","141.74"
+"0","69695","W04_ATTENTION_GPU_REF_CUBLAS","127.0.0.1","softmax_rows_warp(float *, unsigned long, int)","1","7","(256, 1, 1)","(2048, 1, 1)","0","8.9","Command line profiler metrics","dram__bytes_write.sum","Mbyte","129.13"
+"0","69695","W04_ATTENTION_GPU_REF_CUBLAS","127.0.0.1","softmax_rows_warp(float *, unsigned long, int)","1","7","(256, 1, 1)","(2048, 1, 1)","0","8.9","Command line profiler metrics","gpu__time_duration.sum","ms","1.39"
+"0","69695","W04_ATTENTION_GPU_REF_CUBLAS","127.0.0.1","softmax_rows_warp(float *, unsigned long, int)","1","7","(256, 1, 1)","(2048, 1, 1)","0","8.9","Command line profiler metrics","lts__t_bytes.sum","Mbyte","411.87"

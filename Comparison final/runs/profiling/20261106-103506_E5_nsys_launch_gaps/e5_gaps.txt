@@ -1,0 +1,12 @@
+E5 launch gaps; medians over the 20 timed passes (after 2 warm-ups); times in µs
+run                    passes k/pass       span       busy    intra    inter  gap %  kernels
+REF_n2048                  44      3     3544.9     3543.4     1.54     0.74   0.06  ampere_sgemm_128x128_tn > softmax_rows_warp > ampere_sgemm_128x128_nn
+REF_n512                   44      3      196.8      195.3     1.50     0.77   1.15  ampere_sgemm_128x128_tn > softmax_rows_warp > ampere_sgemm_128x128_nn
+S1_n2048                   44      3    32867.1    32865.7     1.38     0.58   0.01  qk_naive > softmax_naive > pv_naive
+S1_n512                    44      3     1927.7     1926.6     1.12     0.58   0.09  qk_naive > softmax_naive > pv_naive
+S2a_n2048                  44      3    10672.6    10671.2     1.49     0.74   0.02  qk_tiled > softmax_rows_warp > pv_tiled
+S2a_n512                   44      3      625.7      624.2     1.54     0.77   0.37  qk_tiled > softmax_rows_warp > pv_tiled
+S2b_tuned_n2048            44      1     3805.9     3805.9     0.00     0.74   0.02  flash_fwd_fp32
+S2b_tuned_n512             44      1      283.2      283.2     0.00     0.74   0.26  flash_fwd_fp32
+S3FP16_tuned_n2048         44      1      843.1      843.1     0.00     0.80   0.09  flash_fwd_tc
+S3FP16_tuned_n512          44      1       75.7       75.7     0.00     0.77   1.00  flash_fwd_tc

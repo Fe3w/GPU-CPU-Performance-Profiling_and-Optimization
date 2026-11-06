@@ -1,0 +1,7 @@
+N                 : 33554432
+Iterations        : 20
+Average time (ms) : 123.6237
+GFLOP/s            : 0.2714
+Bandwidth (GB/s)   : 3.2571
+Operational Intensity (FLOP/Byte): 0.0833
+Correct            : YES

@@ -1,0 +1,6 @@
+date      : 2026-11-06T10:38:03+05:30
+command   : scripts/w04_profile.sh e4 (QUICK=0)
+build sha : d6344f5877e8
+gpu       : NVIDIA GeForce RTX 4060 Laptop GPU, 210 MHz, 4.83 W, 52, 55.00 W
+ncu       : Version 2026.3.0.0 (build 38525999) (public-release)
+nsys      : NVIDIA Nsight Systems version 2026.3.2.313-263238521929v0

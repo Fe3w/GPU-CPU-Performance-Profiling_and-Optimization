@@ -1,0 +1,9 @@
+# started on Fri Nov  6 10:39:05 2026
+
+66544954948,,cpu_core/cycles/,14209529780,99.00,,
+371511761522,,cpu_core/instructions/,14209529780,99.00,,
+105149542954,,cpu_core/fp_arith_inst_retired.scalar_single/,14209529780,99.00,,
+0,,cpu_core/fp_arith_inst_retired.128b_packed_single/,14209529780,99.00,,
+0,,cpu_core/fp_arith_inst_retired.256b_packed_single/,14209529780,99.00,,
+50842907682,,cpu_atom/cycles/,1489749,0.00,,
+48582898563,,cpu_atom/instructions/,1489749,0.00,,

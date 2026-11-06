@@ -1,0 +1,264 @@
+== build ==
+== harness self-tests ==
+  PASS  CPU self-test
+  PASS  GPU self-test
+  -- float32 controls (CPU self-test) --
+        n=128   normal       stable   max_rel=5.344e-07 max_abs=9.528e-08 nonfinite=0      rowsum max_abs=0.000e+00 nonfinite=0      -> PASS
+        n=128   normal       unstable max_rel=6.459e-07 max_abs=1.152e-07 nonfinite=0      rowsum max_abs=0.000e+00 nonfinite=0      -> PASS
+        n=128   normal       bad_norm max_rel=1.163e-02 max_abs=2.073e-03 nonfinite=0      rowsum max_abs=1.517e-02 nonfinite=0      -> EXPECTED FAIL (negative control)
+        n=128   large_logits stable   max_rel=1.451e-05 max_abs=1.451e-05 nonfinite=0      rowsum max_abs=0.000e+00 nonfinite=0      -> PASS
+        n=128   large_logits unstable max_rel=inf max_abs=inf nonfinite=15808  rowsum max_abs=inf nonfinite=15808  -> EXPECTED FAIL (negative control)
+        n=128   large_logits bad_norm max_rel=5.490e-03 max_abs=5.490e-03 nonfinite=0      rowsum max_abs=7.310e-03 nonfinite=0      -> EXPECTED FAIL (negative control)
+        n=256   normal       stable   max_rel=7.798e-07 max_abs=8.000e-08 nonfinite=0      rowsum max_abs=0.000e+00 nonfinite=0      -> PASS
+        n=256   normal       unstable max_rel=7.383e-07 max_abs=7.574e-08 nonfinite=0      rowsum max_abs=0.000e+00 nonfinite=0      -> PASS
+        n=256   normal       bad_norm max_rel=7.187e-03 max_abs=7.373e-04 nonfinite=0      rowsum max_abs=9.244e-03 nonfinite=0      -> EXPECTED FAIL (negative control)
+        n=256   large_logits stable   max_rel=1.980e-05 max_abs=1.980e-05 nonfinite=0      rowsum max_abs=0.000e+00 nonfinite=0      -> PASS
+        n=256   large_logits unstable max_rel=inf max_abs=inf nonfinite=32768  rowsum max_abs=inf nonfinite=32768  -> EXPECTED FAIL (negative control)
+        n=256   large_logits bad_norm max_rel=1.924e+05 max_abs=1.924e+05 nonfinite=0      rowsum max_abs=1.934e+05 nonfinite=0      -> EXPECTED FAIL (negative control)
+        n=1024  normal       stable   max_rel=2.171e-06 max_abs=1.376e-07 nonfinite=0      rowsum max_abs=0.000e+00 nonfinite=0      -> PASS
+        n=1024  normal       unstable max_rel=1.602e-06 max_abs=1.015e-07 nonfinite=0      rowsum max_abs=0.000e+00 nonfinite=0      -> PASS
+        n=1024  normal       bad_norm max_rel=3.050e-03 max_abs=1.933e-04 nonfinite=0      rowsum max_abs=3.857e-03 nonfinite=0      -> EXPECTED FAIL (negative control)
+        n=1024  large_logits stable   max_rel=2.732e-05 max_abs=2.732e-05 nonfinite=0      rowsum max_abs=0.000e+00 nonfinite=0      -> PASS
+        n=1024  large_logits unstable max_rel=inf max_abs=inf nonfinite=131072 rowsum max_abs=inf nonfinite=131072 -> EXPECTED FAIL (negative control)
+        n=1024  large_logits bad_norm max_rel=1.300e+18 max_abs=1.300e+18 nonfinite=0      rowsum max_abs=1.323e+18 nonfinite=0      -> EXPECTED FAIL (negative control)
+        negative controls: 9 of 9 failed as expected
+  -- device facts (GPU self-test) --
+        SMs                      : 24
+        L2 cache                 : 33554432 bytes (32.0 MiB)
+        smem per block (default) : 49152 bytes
+        smem per block (opt-in)  : 101376 bytes
+        smem per SM              : 102400 bytes
+== AVX2 exp ==
+  PASS  exp256_ps accuracy
+      [kExpLo, 0] exhaustive: 1118743633 values, max 1.259 ulp at x=-71.0295868 (got 1.41984965e-31, ref 1.4198498e-31)
+      (0, kExpHi] every 64th: 17482499 values, max 1.239 ulp at x=15.6594248 (got 6321232, ref 6321232.62)
+== stages (9 registered) ==
+  PASS  W04_ATTENTION_CPU_S1_BASE n=128 normal
+  PASS  W04_ATTENTION_CPU_S1_BASE n=128 large_logits
+  PASS  W04_ATTENTION_CPU_S1_BASE n=256 normal
+  PASS  W04_ATTENTION_CPU_S1_BASE n=256 large_logits
+  PASS  W04_ATTENTION_CPU_S1_BASE n=203 d=40 normal
+  PASS  W04_ATTENTION_CPU_S1_BASE n=203 d=40 large_logits
+  PASS  W04_ATTENTION_CPU_S2_SWOPT_BLOCKED_OMP n=128 normal
+  PASS  W04_ATTENTION_CPU_S2_SWOPT_BLOCKED_OMP n=128 large_logits
+  PASS  W04_ATTENTION_CPU_S2_SWOPT_BLOCKED_OMP n=256 normal
+  PASS  W04_ATTENTION_CPU_S2_SWOPT_BLOCKED_OMP n=256 large_logits
+  PASS  W04_ATTENTION_CPU_S2_SWOPT_BLOCKED_OMP n=203 d=40 normal
+  PASS  W04_ATTENTION_CPU_S2_SWOPT_BLOCKED_OMP n=203 d=40 large_logits
+  PASS  W04_ATTENTION_CPU_S2_SWOPT_BLOCKED_OMP ragged (--n 200 --d 64 --br 32 --bc 48) normal
+  PASS  W04_ATTENTION_CPU_S2_SWOPT_BLOCKED_OMP ragged (--n 200 --d 64 --br 32 --bc 48) large_logits
+  PASS  W04_ATTENTION_CPU_S2_SWOPT_BLOCKED_OMP ragged (--n 203 --d 40 --br 5 --bc 24) normal
+  PASS  W04_ATTENTION_CPU_S2_SWOPT_BLOCKED_OMP ragged (--n 203 --d 40 --br 5 --bc 24) large_logits
+  PASS  W04_ATTENTION_CPU_S3_HWACC_AVX2 n=128 normal
+  PASS  W04_ATTENTION_CPU_S3_HWACC_AVX2 n=128 large_logits
+  PASS  W04_ATTENTION_CPU_S3_HWACC_AVX2 n=256 normal
+  PASS  W04_ATTENTION_CPU_S3_HWACC_AVX2 n=256 large_logits
+  PASS  W04_ATTENTION_CPU_S3_HWACC_AVX2 n=203 d=40 normal
+  PASS  W04_ATTENTION_CPU_S3_HWACC_AVX2 n=203 d=40 large_logits
+  PASS  W04_ATTENTION_CPU_S3_HWACC_AVX2 ragged (--n 200 --d 64 --br 32 --bc 48) normal
+  PASS  W04_ATTENTION_CPU_S3_HWACC_AVX2 ragged (--n 200 --d 64 --br 32 --bc 48) large_logits
+  PASS  W04_ATTENTION_CPU_S3_HWACC_AVX2 ragged (--n 203 --d 40 --br 5 --bc 24) normal
+  PASS  W04_ATTENTION_CPU_S3_HWACC_AVX2 ragged (--n 203 --d 40 --br 5 --bc 24) large_logits
+  PASS  W04_ATTENTION_GPU_S1_BASE_NAIVE n=128 normal
+  PASS  W04_ATTENTION_GPU_S1_BASE_NAIVE n=128 large_logits
+  PASS  W04_ATTENTION_GPU_S1_BASE_NAIVE n=256 normal
+  PASS  W04_ATTENTION_GPU_S1_BASE_NAIVE n=256 large_logits
+  PASS  W04_ATTENTION_GPU_S1_BASE_NAIVE n=203 d=40 normal
+  PASS  W04_ATTENTION_GPU_S1_BASE_NAIVE n=203 d=40 large_logits
+  PASS  W04_ATTENTION_GPU_S2a_SWOPT_UNFUSED n=128 normal
+  PASS  W04_ATTENTION_GPU_S2a_SWOPT_UNFUSED n=128 large_logits
+  PASS  W04_ATTENTION_GPU_S2a_SWOPT_UNFUSED n=256 normal
+  PASS  W04_ATTENTION_GPU_S2a_SWOPT_UNFUSED n=256 large_logits
+  PASS  W04_ATTENTION_GPU_S2a_SWOPT_UNFUSED n=203 d=40 normal
+  PASS  W04_ATTENTION_GPU_S2a_SWOPT_UNFUSED n=203 d=40 large_logits
+  PASS  W04_ATTENTION_GPU_REF_CUBLAS n=128 normal
+  PASS  W04_ATTENTION_GPU_REF_CUBLAS n=128 large_logits
+  PASS  W04_ATTENTION_GPU_REF_CUBLAS n=256 normal
+  PASS  W04_ATTENTION_GPU_REF_CUBLAS n=256 large_logits
+  PASS  W04_ATTENTION_GPU_REF_CUBLAS n=203 d=40 normal
+  PASS  W04_ATTENTION_GPU_REF_CUBLAS n=203 d=40 large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED n=128 normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED n=128 large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED n=256 normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED n=256 large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED n=203 d=40 normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED n=203 d=40 large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=16 Bc=16 W=2, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=16 Bc=16 W=2, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=16 Bc=16 W=4, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=16 Bc=16 W=4, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=16 Bc=16 W=8, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=16 Bc=16 W=8, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=16 Bc=32 W=2, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=16 Bc=32 W=2, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=16 Bc=32 W=4, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=16 Bc=32 W=4, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=16 Bc=32 W=8, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=16 Bc=32 W=8, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=16 Bc=64 W=2, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=16 Bc=64 W=2, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=16 Bc=64 W=4, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=16 Bc=64 W=4, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=16 Bc=64 W=8, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=16 Bc=64 W=8, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=32 Bc=16 W=2, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=32 Bc=16 W=2, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=32 Bc=16 W=4, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=32 Bc=16 W=4, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=32 Bc=16 W=8, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=32 Bc=16 W=8, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=32 Bc=32 W=2, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=32 Bc=32 W=2, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=32 Bc=32 W=4, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=32 Bc=32 W=4, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=32 Bc=32 W=8, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=32 Bc=32 W=8, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=32 Bc=64 W=2, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=32 Bc=64 W=2, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=32 Bc=64 W=4, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=32 Bc=64 W=4, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=32 Bc=64 W=8, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=32 Bc=64 W=8, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=64 Bc=16 W=2, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=64 Bc=16 W=2, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=64 Bc=16 W=4, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=64 Bc=16 W=4, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=64 Bc=16 W=8, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=64 Bc=16 W=8, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=64 Bc=32 W=2, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=64 Bc=32 W=2, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=64 Bc=32 W=4, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=64 Bc=32 W=4, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=64 Bc=32 W=8, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=64 Bc=32 W=8, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=64 Bc=64 W=2, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=64 Bc=64 W=2, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=64 Bc=64 W=4, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=64 Bc=64 W=4, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=64 Bc=64 W=8, n=203) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED (Br=64 Bc=64 W=8, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED: 27 runnable (Br, Bc, W) cells, 9 refused with a reason (expected 27)
+  INFO  W04_ATTENTION_GPU_S2b_SWOPT_FUSED Br=16 Bc=16 W=2 vs W=8: not bitwise (FMA contraction), max_rel(normwise)=1.712e-07
+  INFO  W04_ATTENTION_GPU_S2b_SWOPT_FUSED Br=16 Bc=16 W=4 vs W=8: not bitwise (FMA contraction), max_rel(normwise)=1.712e-07
+  INFO  W04_ATTENTION_GPU_S2b_SWOPT_FUSED Br=16 Bc=32 W=2 vs W=8: not bitwise (FMA contraction), max_rel(normwise)=1.712e-07
+  INFO  W04_ATTENTION_GPU_S2b_SWOPT_FUSED Br=16 Bc=32 W=4 vs W=8: not bitwise (FMA contraction), max_rel(normwise)=1.712e-07
+  INFO  W04_ATTENTION_GPU_S2b_SWOPT_FUSED Br=16 Bc=64 W=2 vs W=8: not bitwise (FMA contraction), max_rel(normwise)=1.142e-07
+  INFO  W04_ATTENTION_GPU_S2b_SWOPT_FUSED Br=16 Bc=64 W=4 vs W=8: not bitwise (FMA contraction), max_rel(normwise)=1.142e-07
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED: O bitwise equal across warp counts (12 cells; 6 listed Br=16 cells within 1e-6)
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED ragged (--n 203 --d 40 --br 64 --bc 16) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED ragged (--n 203 --d 40 --br 64 --bc 16) large_logits
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED ragged (--n 203 --d 40 --br 64 --bc 16 --warps 2) normal
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED ragged (--n 203 --d 40 --br 64 --bc 16 --warps 2) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 n=128 normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 n=128 large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 n=256 normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 n=256 large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 n=203 d=40 normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 n=203 d=40 large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 (Br=16 Bc=16 W=1, n=203) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 (Br=16 Bc=16 W=1, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 (Br=16 Bc=32 W=1, n=203) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 (Br=16 Bc=32 W=1, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 (Br=16 Bc=64 W=1, n=203) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 (Br=16 Bc=64 W=1, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 (Br=32 Bc=16 W=2, n=203) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 (Br=32 Bc=16 W=2, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 (Br=32 Bc=32 W=2, n=203) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 (Br=32 Bc=32 W=2, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 (Br=32 Bc=64 W=2, n=203) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 (Br=32 Bc=64 W=2, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 (Br=64 Bc=16 W=2, n=203) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 (Br=64 Bc=16 W=2, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 (Br=64 Bc=16 W=4, n=203) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 (Br=64 Bc=16 W=4, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 (Br=64 Bc=32 W=2, n=203) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 (Br=64 Bc=32 W=2, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 (Br=64 Bc=32 W=4, n=203) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 (Br=64 Bc=32 W=4, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 (Br=64 Bc=64 W=2, n=203) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 (Br=64 Bc=64 W=2, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 (Br=64 Bc=64 W=4, n=203) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 (Br=64 Bc=64 W=4, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16: 12 runnable (Br, Bc, W) cells, 24 refused with a reason (expected 12)
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16: O bitwise equal across warp counts (3 cells; 0 listed Br=16 cells within 1e-6)
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 ragged (--n 203 --d 40 --br 64 --bc 16) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 ragged (--n 203 --d 40 --br 64 --bc 16) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 ragged (--n 203 --d 40 --br 64 --bc 16 --warps 2) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 ragged (--n 203 --d 40 --br 64 --bc 16 --warps 2) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 n=128 normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 n=128 large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 n=256 normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 n=256 large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 n=203 d=40 normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 n=203 d=40 large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 (Br=16 Bc=16 W=1, n=203) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 (Br=16 Bc=16 W=1, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 (Br=16 Bc=32 W=1, n=203) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 (Br=16 Bc=32 W=1, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 (Br=16 Bc=64 W=1, n=203) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 (Br=16 Bc=64 W=1, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 (Br=32 Bc=16 W=2, n=203) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 (Br=32 Bc=16 W=2, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 (Br=32 Bc=32 W=2, n=203) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 (Br=32 Bc=32 W=2, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 (Br=32 Bc=64 W=2, n=203) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 (Br=32 Bc=64 W=2, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 (Br=64 Bc=16 W=2, n=203) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 (Br=64 Bc=16 W=2, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 (Br=64 Bc=16 W=4, n=203) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 (Br=64 Bc=16 W=4, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 (Br=64 Bc=32 W=2, n=203) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 (Br=64 Bc=32 W=2, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 (Br=64 Bc=32 W=4, n=203) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 (Br=64 Bc=32 W=4, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 (Br=64 Bc=64 W=2, n=203) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 (Br=64 Bc=64 W=2, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 (Br=64 Bc=64 W=4, n=203) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 (Br=64 Bc=64 W=4, n=203) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32: 12 runnable (Br, Bc, W) cells, 24 refused with a reason (expected 12)
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32: O bitwise equal across warp counts (3 cells; 0 listed Br=16 cells within 1e-6)
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 ragged (--n 203 --d 40 --br 64 --bc 16) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 ragged (--n 203 --d 40 --br 64 --bc 16) large_logits
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 ragged (--n 203 --d 40 --br 64 --bc 16 --warps 2) normal
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 ragged (--n 203 --d 40 --br 64 --bc 16 --warps 2) large_logits
+== S2b vs S2a (n=1024, direct O comparison) ==
+  PASS  W04_ATTENTION_GPU_S2a_SWOPT_UNFUSED n=1024 normal (dump O)
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED n=1024 normal (dump O)
+  PASS  S2b vs S2a n=1024 normal (normwise rel <= 1e-4)
+      compare : 131072 floats  max_abs=1.304e-07  max_rel(normwise)=2.057e-06  nonfinite=0  tol=0.0001
+  PASS  W04_ATTENTION_GPU_S2a_SWOPT_UNFUSED n=1024 large_logits (dump O)
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED n=1024 large_logits (dump O)
+  PASS  S2b vs S2a n=1024 large_logits (normwise rel <= 1e-4)
+      compare : 131072 floats  max_abs=3.576e-07  max_rel(normwise)=3.576e-07  nonfinite=0  tol=0.0001
+== S3 vs S2b 64x64 (n=1024, direct O comparison, stage tolerance) ==
+  PASS  S2b 64x64 n=1024 normal (dump O)
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 n=1024 normal (dump O)
+  PASS  S3 FP16 vs S2b 64x64 n=1024 normal (normwise rel <= 1e-2)
+      compare : 131072 floats  max_abs=2.324e-05  max_rel(normwise)=3.667e-04  nonfinite=0  tol=0.01
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 n=1024 normal (dump O)
+  PASS  S3 TF32 vs S2b 64x64 n=1024 normal (normwise rel <= 5e-3)
+      compare : 131072 floats  max_abs=2.345e-05  max_rel(normwise)=3.700e-04  nonfinite=0  tol=0.005
+  PASS  S2b 64x64 n=1024 large_logits (dump O)
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 n=1024 large_logits (dump O)
+  INFO  S3 FP16 vs S2b 64x64 n=1024 large_logits (input rounding, not gated, C26): max_rel(normwise)=2.286e-02
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 n=1024 large_logits (dump O)
+  INFO  S3 TF32 vs S2b 64x64 n=1024 large_logits (input rounding, not gated, C26): max_rel(normwise)=2.286e-02
+== tuned defaults (w04_tuned.hpp, nearest tuned N) ==
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED n=256 without tile flags
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED n=256 default = tuned entry (Br=64 Bc=32 W=4)
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED n=4096 without tile flags
+  PASS  W04_ATTENTION_GPU_S2b_SWOPT_FUSED n=4096 default = tuned entry (Br=64 Bc=32 W=4)
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 n=256 without tile flags
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 n=256 default = tuned entry (Br=64 Bc=32 W=4)
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 n=4096 without tile flags
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 n=4096 default = tuned entry (Br=64 Bc=64 W=4)
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 n=256 without tile flags
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 n=256 default = tuned entry (Br=64 Bc=32 W=4)
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 n=4096 without tile flags
+  PASS  W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_TF32 n=4096 default = tuned entry (Br=64 Bc=32 W=4)
+== machine code ==
+  PASS  CPU S3 contains 44 ymm vfmadd*ps instructions
+  PASS  GPU S2b SASS: 5400 LDS, 1176 SHFL, 0 HMMA (SIMT FP32, shared-memory tiles, shuffle reductions)
+  PASS  GPU S3 FP16 SASS: HMMA.16816.F32 560; (only HMMA.16816.F32)
+  PASS  GPU S3 TF32 SASS: HMMA.1684.F32.TF32 2240; (only HMMA.1684.F32.TF32)
+== summary: 215 passed, 0 failed, 50s (logs: build/test_out/20261106-134817) ==

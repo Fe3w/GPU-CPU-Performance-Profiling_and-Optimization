@@ -1,0 +1,7 @@
+
+W02 CPU S3 HWACC AVX2 FMA
+N                   : 33554432
+Threads             : 6
+Operational Intensity: 0.25 FLOP/Byte
+Final result        : 9.30029e+06
+Correct             : YES

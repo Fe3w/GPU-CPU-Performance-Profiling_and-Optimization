@@ -1,0 +1,10 @@
+
+W01 GPU S2 SWOPT COALESCED
+N              : 33554432
+Blocks         : 262144
+Threads/block  : 128
+Runtime/iter   : 1.82436 ms
+GFLOP/s        : 18.3925
+Bandwidth      : 220.709 GB/s
+Operational Intensity: 0.0833333 FLOP/Byte
+Correct        : YES

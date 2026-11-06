@@ -1,0 +1,2 @@
+experiment_id,workload,platform,stage,variant,N,threads,iterations,repetition,runtime_ms,gflops,bandwidth_gbs,flops,algorithmic_bytes,operational_intensity,result,reference_result,relative_error_pct,execution_valid,compiler,compiler_flags
+W02_DOT_PRODUCT_CPU_S3_HWACC_AVX2_FMA_T6_R01,W02_DOT_PRODUCT,CPU,S3_HWACC,OMP_STATIC_AVX2_FMA_F32,33554432,6,20,1,4.568249,14.690281,58.761123,67108864.000000,268435456.000000,0.250000,9300286.000000,9301967.501494,0.018077,YES,g++,"-O3 -mavx2 -mfma -fopenmp -fno-tree-vectorize -fno-tree-slp-vectorize -std=c++17 -g"

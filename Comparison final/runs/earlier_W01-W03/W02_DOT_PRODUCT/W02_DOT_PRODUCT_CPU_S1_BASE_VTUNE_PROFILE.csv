@@ -1,0 +1,2 @@
+experiment_id,workload,platform,stage,variant,N,threads,iterations,repetition,runtime_ms,gflops,bandwidth_gbs,flops,algorithmic_bytes,operational_intensity,result,correct,compiler,compiler_flags
+W02_DOT_PRODUCT_CPU_S1_BASE_R01,W02_DOT_PRODUCT,CPU,S1_BASE,O0_SCALAR,33554432,1,20,1,60.238304,1.114056,4.456225,67108864.000000,268435456.000000,0.250000,8674097.000000,NO,g++,"-O0 -std=c++17 -g"

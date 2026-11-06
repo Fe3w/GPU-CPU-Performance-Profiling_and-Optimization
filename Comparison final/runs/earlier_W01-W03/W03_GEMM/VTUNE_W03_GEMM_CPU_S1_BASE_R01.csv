@@ -1,0 +1,10 @@
+Function	CPU Time	CPU Time:Effective Time	CPU Time:Spin Time	CPU Time:Overhead Time	Instructions Retired	Microarchitecture Usage(%)	Microarchitecture Usage:Microarchitecture Usage(%)	Microarchitecture Usage:CPI Rate	Module	Function (Full)	Source File	Start Address
+main	3.733733	3.733733	0.0	0.0	685448400000	55.7	55.7	0.010249	W03_GEMM_CPU_S1_BASE	main	W03_GEMM_CPU_S1_BASE.cpp	0x2b78
+std::vector<float, std::allocator<float>>::operator[]	2.558077	2.558077	0.0	0.0	568036000000	100.0	100.0	0.006901	W03_GEMM_CPU_S1_BASE	std::vector<float, std::allocator<float>>::operator[](unsigned long)	stl_vector.h	0x4ce0
+[Outside any known module]	0.053938	0.053938	0.0	0.0	2086000000	31.5	31.5	0.033557	[Unknown]	[Outside any known module]	[Unknown]	0x0
+initialize_matrices	0.002997	0.002997	0.0	0.0	67200000	52.6	52.6	0.083333	W03_GEMM_CPU_S1_BASE	initialize_matrices(std::vector<float, std::allocator<float>>&, std::vector<float, std::allocator<float>>&)	W03_GEMM_CPU_S1_BASE.cpp	0x260a
+std::__fill_a1<float*, float>	0.001998	0.001998	0.0	0.0	19600000			0.428571	W03_GEMM_CPU_S1_BASE	std::__fill_a1<float*, float>(float*, float*, float const&)	stl_algobase.h	0x6af9
+reference_gemm_subset	0.0	0.0	0.0	0.0	2156000000	64.6	64.6	0.0	W03_GEMM_CPU_S1_BASE	reference_gemm_subset(std::vector<float, std::allocator<float>> const&, std::vector<float, std::allocator<float>> const&, std::vector<double, std::allocator<double>>&, unsigned long, unsigned long)	W03_GEMM_CPU_S1_BASE.cpp	0x2760
+relative_error_percent	0.0	0.0	0.0	0.0	2800000	0.0	0.0	0.0	W03_GEMM_CPU_S1_BASE	relative_error_percent(double, double)	W03_GEMM_CPU_S1_BASE.cpp	0x288b
+std::max<double>	0.0	0.0	0.0	0.0	5600000	0.0	0.0	0.0	W03_GEMM_CPU_S1_BASE	std::max<double>(double const&, double const&)	stl_algobase.h	0x4d4c
+std::vector<float, std::allocator<float>>::operator[]	0.0	0.0	0.0	0.0	1601600000	78.7	78.7	0.0	W03_GEMM_CPU_S1_BASE	std::vector<float, std::allocator<float>>::operator[](unsigned long) const	stl_vector.h	0x4d04

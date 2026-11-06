@@ -1,0 +1,2 @@
+experiment_id,workload,platform,stage,variant,N,iterations,repetitions,warmup,runtime_mean_ms,runtime_std_ms,gflops,bandwidth_gbs,flops,algorithmic_bytes,operational_intensity,ref_checksum,out_checksum,max_rel_error_pct,correct,compiler,compiler_flags
+W03_GEMM_GPU_S3_HWACC_TENSOR_CORE,W03_GEMM,GPU,S3_HWACC,TENSOR_CORE_TF32,1024,20,1,1,0.56821113,0.00000000,3779.37627142,22.14478284,2147483648.00000000,12582912.00000000,170.66666667,16743551.16285824,16732534.40571594,0.06861511,YES,"NVCC","-O3 -std=c++17 -g -gencode arch=compute_89,code=sm_89"

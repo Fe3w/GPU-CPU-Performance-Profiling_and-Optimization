@@ -1,0 +1,10 @@
+W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16  git=55b980e2dd56  device=NVIDIA GeForce RTX 4060 Laptop GPU (sm_89)
+flags   : nvcc -O3 -std=c++17 -lineinfo -gencode arch=compute_89,code=sm_89 -Xcompiler -fopenmp -Xcompiler -Wall
+config  : Br=64 (tuned N=2048) Bc=32 (tuned N=2048) warps=4 (tuned N=2048)
+tile    : Br=64 Bc=32, 128 threads (4 warps), 31744 B dynamic shared memory per block
+phases  : fused 0.6429 ms (100.0%)  [separate pass, events between kernels, not the benchmark time]
+prepare : convert Q,K,V FP32->FP16 0.0130 ± 0.0000 ms per call  [untimed in runtime_ms; CSV prep_ms]
+check   : main max_abs=1.909e-05 max_rel=2.995e-04 nonfinite=0 | plain max_rel=2.995e-04 | rowsum max_abs=1.919e-05 nonfinite=0 | elem_rel(diag)=1.758e-02 | tol=1e-02
+summary : W04_ATTENTION_GPU_S3_HWACC_TENSOR_CORE_FP16 n=2048 bh=8 d=64 iters=20 reps=5 warmup=2 seed=42 input=normal br=64 bc=32 warps=4 | 0.6321 ± 0.0012 ms | 13589.9 GFLOP/s | FP16
+csv     : results/raw/FINAL/20261106-134741/csv/W04_GPU_S3_FP16_N2048_r3.csv
+Correct : YES

@@ -1,0 +1,54 @@
+========================================
+W03 GEMM CPU S2 CACHE-BLOCKED (OpenMP)
+========================================
+N                     : 1024
+Iterations            : 20
+Repetitions           : 5
+Warmup                : 2
+Block size            : 128
+FLOPs                 : 2.14748e+09
+Algorithmic bytes     : 1.25829e+07
+Operational Intensity : 170.667 FLOP/Byte
+
+Repetition 1/5
+  Average time (ms) : 89.0574
+  GFLOP/s           : 24.1135
+  Bandwidth (GB/s)  : 0.1413
+  Operational Intensity: 170.6667 FLOP/Byte
+
+Repetition 2/5
+  Average time (ms) : 88.9055
+  GFLOP/s           : 24.1547
+  Bandwidth (GB/s)  : 0.1415
+  Operational Intensity: 170.6667 FLOP/Byte
+
+Repetition 3/5
+  Average time (ms) : 88.9519
+  GFLOP/s           : 24.1421
+  Bandwidth (GB/s)  : 0.1415
+  Operational Intensity: 170.6667 FLOP/Byte
+
+Repetition 4/5
+  Average time (ms) : 88.9577
+  GFLOP/s           : 24.1405
+  Bandwidth (GB/s)  : 0.1414
+  Operational Intensity: 170.6667 FLOP/Byte
+
+Repetition 5/5
+  Average time (ms) : 88.9265
+  GFLOP/s           : 24.1490
+  Bandwidth (GB/s)  : 0.1415
+  Operational Intensity: 170.6667 FLOP/Byte
+
+========================================
+SUMMARY
+========================================
+Mean time (ms)      : 88.9598 ± 0.0584
+Mean GFLOP/s        : 24.1399
+Reference checksum  : 16743551.1629
+Output checksum     : 16743551.2174
+Max rel error (%)   : 0.0002
+Correct             : YES
+
+CSV saved to:
+results/raw/FINAL/20261106-134741/csv/W03_CPU_S2.csv
