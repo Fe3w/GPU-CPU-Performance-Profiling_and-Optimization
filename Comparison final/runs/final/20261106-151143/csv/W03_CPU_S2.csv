@@ -1,0 +1,2 @@
+experiment_id,workload,platform,stage,variant,N,iterations,repetitions,warmup,runtime_mean_ms,runtime_std_ms,gflops,bandwidth_gbs,flops,algorithmic_bytes,operational_intensity,ref_checksum,out_checksum,max_rel_error_pct,correct,compiler,compiler_flags
+W03_GEMM_CPU_S2_SWOPT_CACHE_BLOCK,W03_GEMM,CPU,S2_SWOPT,OMP_CACHE_BLOCKED,1024,20,5,2,89.04506379,0.17216320,24.11681857,0.14130948,2147483648.00000000,12582912.00000000,170.66666667,16743551.16285824,16743551.21736145,0.00016071,YES,"G++ 13.3.0","-O3 -fopenmp -fno-tree-vectorize -fno-tree-slp-vectorize -std=c++17 -g"

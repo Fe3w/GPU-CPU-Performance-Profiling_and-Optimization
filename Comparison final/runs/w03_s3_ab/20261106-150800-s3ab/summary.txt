@@ -1,0 +1,6 @@
+N=1024 A: round means 0.7998, 0.8001, 0.7761 ms; median 0.7998 ms; spread 3.0%; GFLOP/s 2685; correct YES; max rel err 0.0686%
+N=1024 B: round means 0.5989, 0.5988, 0.6221 ms; median 0.5989 ms; spread 3.9%; GFLOP/s 3586; correct YES; max rel err 0.0041%
+N=1024 A/B time ratio 1.335 (B is 1.34x faster than A)
+N=2048 A: round means 5.4787, 5.4727, 5.4224 ms; median 5.4727 ms; spread 1.0%; GFLOP/s 3139; correct YES; max rel err 0.0712%
+N=2048 B: round means 4.5014, 4.6176, 4.6219 ms; median 4.6176 ms; spread 2.6%; GFLOP/s 3720; correct YES; max rel err 0.0059%
+N=2048 A/B time ratio 1.185 (B is 1.19x faster than A)

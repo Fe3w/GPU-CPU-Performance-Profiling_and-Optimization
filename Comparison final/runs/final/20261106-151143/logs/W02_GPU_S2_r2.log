@@ -1,0 +1,56 @@
+========================================
+W02 DOT PRODUCT GPU S2 BLOCK REDUCTION
+========================================
+N                    : 33554432
+Iterations           : 20
+Repetitions          : 5
+Warmup               : 2
+Block size           : 256
+Operational Intensity: 0.25 FLOP/Byte
+Grid size             : 131072
+
+Repetition 1/5
+  Average time (ms) : 1.2762
+  GFLOP/s            : 52.5845
+  Bandwidth (GB/s)   : 210.3378
+  Operational Intensity: 0.2500 FLOP/Byte
+
+Repetition 2/5
+  Average time (ms) : 1.2794
+  GFLOP/s            : 52.4519
+  Bandwidth (GB/s)   : 209.8075
+  Operational Intensity: 0.2500 FLOP/Byte
+
+Repetition 3/5
+  Average time (ms) : 1.2812
+  GFLOP/s            : 52.3808
+  Bandwidth (GB/s)   : 209.5232
+  Operational Intensity: 0.2500 FLOP/Byte
+
+Repetition 4/5
+  Average time (ms) : 1.2795
+  GFLOP/s            : 52.4484
+  Bandwidth (GB/s)   : 209.7936
+  Operational Intensity: 0.2500 FLOP/Byte
+
+Repetition 5/5
+  Average time (ms) : 1.2819
+  GFLOP/s            : 52.3513
+  Bandwidth (GB/s)   : 209.4053
+  Operational Intensity: 0.2500 FLOP/Byte
+
+========================================
+SUMMARY
+========================================
+Mean time (ms)      : 1.2796 ± 0.0022
+Mean GFLOP/s        : 52.4434 ± 0.0900
+Mean bandwidth GB/s : 209.7735 ± 0.3599
+Result              : 9301970.0000
+FP32 reference      : 8674097.0000
+Double reference    : 9301967.5015
+Error vs FP32 (%)   : 7.2385
+Error vs double (%) : 0.0000
+Correct             : YES
+
+CSV saved to:
+results/raw/FINAL/20261106-151143/csv/W02_GPU_S2_r2.csv

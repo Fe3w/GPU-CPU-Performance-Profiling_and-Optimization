@@ -1,0 +1,8 @@
+
+W02 CPU S1 BASE
+N                  : 33554432
+Threads            : 1
+Runtime/iter       : measured per repetition
+Operational Intensity: 0.25 FLOP/Byte
+Final result       : 9301967.50149
+Correct            : YES

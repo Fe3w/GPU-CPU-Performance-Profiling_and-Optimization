@@ -1,0 +1,51 @@
+========================================
+W03 GEMM GPU S2 SHARED-MEMORY TILED
+========================================
+N                     : 1024
+Iterations            : 20
+Repetitions           : 5
+Warmup                : 2
+Block size            : 16 x 16
+FLOPs                 : 2.14748e+09
+Algorithmic bytes     : 1.25829e+07
+Operational Intensity : 170.667 FLOP/Byte
+
+Repetition 1/5
+  Average time (ms) : 1.6275
+  GFLOP/s           : 1319.4964
+  Bandwidth (GB/s)  : 7.7314
+  Operational Intensity: 170.6667 FLOP/Byte
+
+Repetition 2/5
+  Average time (ms) : 1.6274
+  GFLOP/s           : 1319.5963
+  Bandwidth (GB/s)  : 7.7320
+  Operational Intensity: 170.6667 FLOP/Byte
+
+Repetition 3/5
+  Average time (ms) : 1.6274
+  GFLOP/s           : 1319.5872
+  Bandwidth (GB/s)  : 7.7320
+  Operational Intensity: 170.6667 FLOP/Byte
+
+Repetition 4/5
+  Average time (ms) : 1.6273
+  GFLOP/s           : 1319.6430
+  Bandwidth (GB/s)  : 7.7323
+  Operational Intensity: 170.6667 FLOP/Byte
+
+Repetition 5/5
+  Average time (ms) : 1.6634
+  GFLOP/s           : 1290.9883
+  Bandwidth (GB/s)  : 7.5644
+  Operational Intensity: 170.6667 FLOP/Byte
+
+========================================
+SUMMARY
+========================================
+Mean time (ms)      : 1.6346 ± 0.0161
+Mean GFLOP/s        : 1313.7614
+Reference checksum  : 16743551.1629
+Output checksum     : 16743551.2090
+Max rel error (%)   : 0.0002
+Correct             : YES

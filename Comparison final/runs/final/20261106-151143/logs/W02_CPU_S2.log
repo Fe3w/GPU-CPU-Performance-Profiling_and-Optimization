@@ -1,0 +1,9 @@
+
+W02 CPU S2 SWOPT OMP
+N                   : 33554432
+Threads             : 6
+Iterations          : 20
+Repetitions         : 5
+Operational Intensity: 0.25 FLOP/Byte
+Final result        : 9301967.50171
+Correct             : YES

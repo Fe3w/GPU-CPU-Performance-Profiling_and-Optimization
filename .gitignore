@@ -46,3 +46,8 @@ profiling/W04_ATTENTION/e8/*/vtune_*/
 
 # Built by ./demo_kit/demo.sh hw
 demo_kit/tools/devinfo
+
+# Demo kit live outputs (every ./demo_kit/demo.sh run, profiler reports, optional video)
+results/live/
+profiling/demo/
+demo/

@@ -1,0 +1,6 @@
+date     : 2026-11-06T15:08:56+05:30
+commit   : 0d7c871fffb2-dirty
+A        : build/ab_w03/W03_GEMM_GPU_S3_before_5b61fa3
+B        : build/W03_GEMM_GPU_S3_HWACC_TENSOR_CORE
+N        : 1024 2048  rounds: 3  protocol: N 20 5 2
+gpu      : NVIDIA GeForce RTX 4060 Laptop GPU, 595.99.02, 210 MHz, 405 MHz, 4.50 W, 50

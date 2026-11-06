@@ -3,7 +3,7 @@
 
     python3 "Comparison final/scripts/make_graphs.py"
 
-Reads data/final_results.csv (the final paired re-test, run 20261106-141652) and
+Reads data/final_results.csv (the final paired re-test, run 20261106-151143) and
 data/reference_values.csv (earlier records). Writes:
   1_runtime_every_stage.png   time per stage, CPU and GPU, one panel per workload (log axis)
   2_best_cpu_vs_best_gpu.png  fastest CPU stage vs fastest GPU stage per workload
@@ -155,7 +155,7 @@ for y, (_, d, _) in zip(ys, items):
                 fontsize=7, color=INK, xytext=(3 if d >= 0 else -3, 0), textcoords="offset points")
 ax.set_yticks(ys, [k for k, _, _ in items], fontsize=7, color=INK)
 ax.axvline(0, color=INK2, linewidth=0.8)
-ax.set_xlim(-45, 30)
+ax.set_xlim(min(-45, min(x for _, x, _ in items) - 12), 30)
 ax.set_xlabel("time now vs the earlier recorded run (%; negative = faster now; grey band = ±10%)", color=INK2, fontsize=8.5)
 ax.legend(handles=legend, loc="lower right", frameon=False, fontsize=8)
 ax.set_title("Final re-test vs earlier records (every ⚠ is explained in data/deviation_notes.md)", color=INK, fontsize=10)

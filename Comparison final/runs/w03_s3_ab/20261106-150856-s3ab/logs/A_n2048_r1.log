@@ -1,0 +1,53 @@
+========================================
+W03 GEMM GPU S3 TENSOR CORE TF32
+========================================
+N                     : 2048
+Iterations            : 20
+Repetitions           : 5
+Warmup                : 2
+Block tile            : 32 x 32
+WMMA shape            : 16 x 16 x 8
+Threads per block     : 128
+FLOPs                 : 1.71799e+10
+Algorithmic bytes     : 5.03316e+07
+Operational Intensity : 341.333 FLOP/Byte
+
+Repetition 1/5
+  Average time (ms) : 5.2146
+  GFLOP/s           : 3294.5807
+  Bandwidth (GB/s)  : 9.6521
+  Operational Intensity: 341.3333 FLOP/Byte
+
+Repetition 2/5
+  Average time (ms) : 5.4760
+  GFLOP/s           : 3137.3204
+  Bandwidth (GB/s)  : 9.1914
+  Operational Intensity: 341.3333 FLOP/Byte
+
+Repetition 3/5
+  Average time (ms) : 5.4726
+  GFLOP/s           : 3139.2274
+  Bandwidth (GB/s)  : 9.1970
+  Operational Intensity: 341.3333 FLOP/Byte
+
+Repetition 4/5
+  Average time (ms) : 5.5139
+  GFLOP/s           : 3115.7661
+  Bandwidth (GB/s)  : 9.1282
+  Operational Intensity: 341.3333 FLOP/Byte
+
+Repetition 5/5
+  Average time (ms) : 5.5484
+  GFLOP/s           : 3096.3754
+  Bandwidth (GB/s)  : 9.0714
+  Operational Intensity: 341.3333 FLOP/Byte
+
+========================================
+SUMMARY
+========================================
+Mean time (ms)      : 5.4451 ± 0.1325
+Mean GFLOP/s        : 3155.1147
+Reference checksum  : 33473431.5695
+Output checksum     : 33450987.2456
+Max rel error (%)   : 0.0712
+Correct             : YES

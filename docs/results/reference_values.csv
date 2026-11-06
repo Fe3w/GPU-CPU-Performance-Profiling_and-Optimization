@@ -16,7 +16,7 @@ W03_CPU_S2,89.1533,0.1317,1,results/raw/W03_GEMM/W03_GEMM_CPU_S2_SWOPT_CACHE_BLO
 W03_CPU_S3,24.9626,0.119,1,results/raw/W03_GEMM/W03_GEMM_CPU_S3_HWACC_AVX2_FMA_B128_T08.csv,2026-10,N=1024 B128 T=8,1
 W03_GPU_S1,2.9407,0.1611,1,results/raw/W03_GEMM/W03_GEMM_GPU_S1_BASE_NAIVE_V1.csv,2026-10,N=1024,1
 W03_GPU_S2,2.2999,0.198,1,results/raw/W03_GEMM/W03_GEMM_GPU_S2_SWOPT_SHARED_TILE_V1.csv,2026-10,N=1024,1
-W03_GPU_S3,0.8015,0.0013,1,results/raw/W03_GEMM/W03_GEMM_GPU_S3_HWACC_TENSOR_CORE_V2.csv,2026-10,N=1024,1
+W03_GPU_S3,0.8015,0.0013,1,results/raw/W03_GEMM/W03_GEMM_GPU_S3_HWACC_TENSOR_CORE_V2.csv,2026-10,"N=1024; first S3 kernel (k-tile 8, generic fragment loads); replaced after P8 by the k-tile 32 / shared-load kernel: not the same code",1
 W04_GPU_S1_N1024,7.4859,,15,"results/raw/W04_ATTENTION/20261106-114338 (median of 3 rounds, tools/w04_summary.py)",2026-11-06,,1
 W04_GPU_S2a_N1024,2.2011,,15,"results/raw/W04_ATTENTION/20261106-114338 (median of 3 rounds, tools/w04_summary.py)",2026-11-06,,1
 W04_GPU_S2b_N1024,0.7864,,15,"results/raw/W04_ATTENTION/20261106-114338 (median of 3 rounds, tools/w04_summary.py)",2026-11-06,tuned default,1

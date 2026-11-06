@@ -1,0 +1,53 @@
+========================================
+W03 GEMM CPU S1 BASELINE
+========================================
+N                     : 1024
+Iterations            : 20
+Repetitions           : 5
+Warmup                : 2
+FLOPs                 : 2.14748e+09
+Algorithmic bytes     : 1.25829e+07
+Operational Intensity : 170.667 FLOP/Byte
+
+Repetition 1/5
+  Average time (ms) : 2926.9238
+  GFLOP/s           : 0.7337
+  Bandwidth (GB/s)  : 0.0043
+  Operational Intensity: 170.6667 FLOP/Byte
+
+Repetition 2/5
+  Average time (ms) : 2923.7180
+  GFLOP/s           : 0.7345
+  Bandwidth (GB/s)  : 0.0043
+  Operational Intensity: 170.6667 FLOP/Byte
+
+Repetition 3/5
+  Average time (ms) : 2923.5188
+  GFLOP/s           : 0.7346
+  Bandwidth (GB/s)  : 0.0043
+  Operational Intensity: 170.6667 FLOP/Byte
+
+Repetition 4/5
+  Average time (ms) : 2939.6705
+  GFLOP/s           : 0.7305
+  Bandwidth (GB/s)  : 0.0043
+  Operational Intensity: 170.6667 FLOP/Byte
+
+Repetition 5/5
+  Average time (ms) : 2945.8131
+  GFLOP/s           : 0.7290
+  Bandwidth (GB/s)  : 0.0043
+  Operational Intensity: 170.6667 FLOP/Byte
+
+========================================
+SUMMARY
+========================================
+Mean time (ms)      : 2931.9288 ± 10.1969
+Mean GFLOP/s        : 0.7324
+Reference checksum  : 16743551.1629
+Output checksum     : 16743551.2174
+Max rel error (%)   : 0.0002
+Correct             : YES
+
+CSV saved to:
+results/raw/FINAL/20261106-151143/csv/W03_CPU_S1.csv

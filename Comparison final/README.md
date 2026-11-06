@@ -20,7 +20,9 @@ Everything needed to understand the project and check the CPU/GPU comparison, in
 | `graphs/final/speedup_all.png` | every stage as × vs its own S1 |
 | `graphs/w04_development/` | W04 runtime vs N (e1), factored speedups (e2), measured-traffic Roofline (e3), memory vs N (e6), autotune heatmaps (e7) |
 | **`runs/`** (CSV and text only; binary profiler reports are not included; in the public repository, the W01 VTune summaries and the E5 Nsight Systems console logs are also left out because they hold machine metadata) | |
-| `runs/final/20261106-141652/` | **the final paired re-test**: every CSV, every log, `runs.csv` (per run: threads, temperature, clocks, exit code), `gpu_state.csv`, `run_info.txt`, `commands.log` |
+| `runs/final/20261106-151143/` | **the final paired re-test** (after the W03 GPU S3 optimization): every CSV, every log, `runs.csv` (per run: threads, temperature, clocks, exit code), `gpu_state.csv`, `run_info.txt`, `commands.log` |
+| `runs/final/20261106-141652_previous/` | the first release run (v1.0), with the first W03 GPU S3 kernel; agrees with the final run within a few % on every other stage |
+| `runs/w03_s3_ab/` | paired A/B of the first and the optimized W03 GPU S3 kernel at N = 1024 and 2048 (3 alternating rounds, clocks per run, `summary.txt`) |
 | `runs/final/20261106-134741_superseded/` | first full run of the re-test: W01 GPU S1 at the lower memory clock, W01 CPU S2/S3 built -O0 (see the brief, §8) |
 | `runs/w04_development/20261106-114338_gpu_nsweep/` | W04 GPU N sweep 512–8192, all stages, 3 rounds (source of the W04 figures) |
 | `runs/w04_development/20261106-115441_gpu_locked_clock_1500MHz/` | the same sweep at a locked 1500 MHz SM clock (equal-clock check) |
@@ -36,4 +38,4 @@ Everything needed to understand the project and check the CPU/GPU comparison, in
 | `runs/earlier_W01-W03/` | the October W01–W03 records (raw CSVs, processed summaries, demo CSVs) the final run is compared with |
 | **`scripts/make_graphs.py`** | regenerates `graphs/comparison/` from `data/` |
 
-Hardware: Intel Core i7-13650HX + NVIDIA RTX 4060 Laptop (55 W), Ubuntu 24.04, CUDA 13.4, driver 595.99. Final run: `20261106-141652`, commit `5b61fa3`.
+Hardware: Intel Core i7-13650HX + NVIDIA RTX 4060 Laptop (55 W), Ubuntu 24.04, CUDA 13.4, driver 595.99. Final run: `20261106-151143`, commit `7f0e5f6`. The live demo kit that re-runs these benchmarks is `demo_kit/` at the repository root.

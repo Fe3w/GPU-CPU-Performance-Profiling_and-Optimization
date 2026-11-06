@@ -26,20 +26,34 @@ using namespace nvcuda;
 // -----------------------------------------------------------------------------
 // W03 GEMM — GPU S3 TENSOR CORE TF32
 //
-// Tensor Core GEMM using the WMMA API with TF32 precision:
-//   4 warps per block, each warp computes a 16x16 output tile
-//   block covers a 32x32 output tile per k-step of 8
-//   shared memory staging for both A and B tiles
+// Tensor Core GEMM using the WMMA API with TF32 inputs and FP32 accumulation:
+//   4 warps per block, each warp computes a 16x16 output tile, so a block
+//   covers a 32x32 output tile
+//   A and B are staged through shared memory in k-tiles of BLOCK_K = 32
+//   (4 m16n16k8 MMAs per warp between two barriers)
 //   no cuBLAS
+//
+// Changes against the first version (k-tile 8, load_matrix_sync), made after
+// the final re-test of 2026-11-06:
+//   * fragment loads name the .shared state space (inline PTX, as in W04 S3
+//     TF32): wmma::load_matrix_sync for tf32 emits the generic-address form,
+//     which ptxas compiles to LD.E (the global load path) although the data
+//     is in shared memory
+//   * k-tile 32 instead of 8: four MMAs per pair of __syncthreads instead of one
+//   * shared tiles padded by 4 floats (ldm 36: a multiple of 4 as WMMA tf32
+//     requires; fragment addresses stay 32-byte aligned)
+//   * inputs rounded to TF32 once, when stored to shared memory
+//     (__float_to_tf32); the first version passed FP32 bits to the tf32 MMA
+//   * edge tiles are stored with bounds checks, so any N works (the first
+//     version required N to be a multiple of 16)
 //
 // Row-major:
 //   A[i*N + k]
 //   B[k*N + j]
 //   C[i*N + j]
 //
-// Note: TF32 has a 10-bit mantissa, so relative error vs. an fp64
-// reference will be larger than for the FP32 S1/S2 kernels.  The
-// correctness threshold of 0.1% may need to be loosened for TF32.
+// TF32 has a 10-bit mantissa, so the relative error vs. an fp64 reference is
+// larger than for the FP32 S1/S2 kernels (~0.07%, inside the 0.1% check).
 // -----------------------------------------------------------------------------
 
 #define WMMA_M 16
@@ -48,6 +62,8 @@ using namespace nvcuda;
 
 #define BLOCK_M 32
 #define BLOCK_N 32
+#define BLOCK_K 32
+#define SMEM_PAD 4
 #define BLOCK_THREADS 128
 
 static void initialize_matrices(std::vector<float>& A,
@@ -91,13 +107,33 @@ static double relative_error_percent(double result,
 // -----------------------------------------------------------------------------
 // Tensor Core GEMM kernel (TF32 WMMA)
 // -----------------------------------------------------------------------------
+// Fragment loads from shared memory with the .shared state space named in the
+// PTX (same instruction and fragment layout as wmma::load_matrix_sync).
+using frag_a_t = wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, wmma::precision::tf32, wmma::row_major>;
+using frag_b_t = wmma::fragment<wmma::matrix_b, WMMA_M, WMMA_N, WMMA_K, wmma::precision::tf32, wmma::row_major>;
+
+#define W03_TF32_LDS(AB)                                                                               \
+    unsigned u0, u1, u2, u3;                                                                           \
+    const unsigned a = static_cast<unsigned>(__cvta_generic_to_shared(p));                             \
+    asm volatile("wmma.load." AB ".sync.aligned.row.m16n16k8.shared.tf32 {%0, %1, %2, %3}, [%4], %5;" \
+                 : "=r"(u0), "=r"(u1), "=r"(u2), "=r"(u3)                                               \
+                 : "r"(a), "r"(ld)                                                                     \
+                 : "memory");                                                                          \
+    f.x[0] = __uint_as_float(u0); f.x[1] = __uint_as_float(u1);                                        \
+    f.x[2] = __uint_as_float(u2); f.x[3] = __uint_as_float(u3);
+
+__device__ inline void load_shared(frag_a_t& f, const float* p, unsigned ld) { W03_TF32_LDS("a") }
+__device__ inline void load_shared(frag_b_t& f, const float* p, unsigned ld) { W03_TF32_LDS("b") }
+#undef W03_TF32_LDS
+
 __global__ void gemm_tensor_core(const float* A,
                                  const float* B,
                                  float* C,
                                  std::size_t N) {
 
-    __shared__ float As[BLOCK_M][WMMA_K];
-    __shared__ float Bs[WMMA_K][BLOCK_N];
+    // ldm = BLOCK_K + 4 and BLOCK_N + 4 = 36 floats; 32-byte aligned rows of 16
+    __shared__ __align__(32) float As[BLOCK_M][BLOCK_K + SMEM_PAD];
+    __shared__ __align__(32) float Bs[BLOCK_K][BLOCK_N + SMEM_PAD];
 
     const int tid = threadIdx.x;
     const int warp_id = tid / 32;
@@ -119,86 +155,64 @@ __global__ void gemm_tensor_core(const float* A,
         block_col +
         static_cast<std::size_t>(warp_col) * WMMA_N;
 
-    wmma::fragment<
-        wmma::matrix_a,
-        WMMA_M, WMMA_N, WMMA_K,
-        wmma::precision::tf32,
-        wmma::row_major> a_frag;
-
-    wmma::fragment<
-        wmma::matrix_b,
-        WMMA_M, WMMA_N, WMMA_K,
-        wmma::precision::tf32,
-        wmma::row_major> b_frag;
-
-    wmma::fragment<
-        wmma::accumulator,
-        WMMA_M, WMMA_N, WMMA_K,
-        float> c_frag;
+    frag_a_t a_frag;
+    frag_b_t b_frag;
+    wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> c_frag;
 
     wmma::fill_fragment(c_frag, 0.0f);
 
-    for (std::size_t kk = 0; kk < N; kk += WMMA_K) {
+    for (std::size_t kt = 0; kt < N; kt += BLOCK_K) {
 
-        // Cooperatively load A: 32 x 8 = 256 floats
-        for (int idx = tid; idx < BLOCK_M * WMMA_K; idx += BLOCK_THREADS) {
-
-            const int r = idx / WMMA_K;
-            const int k = idx % WMMA_K;
-
+        // Cooperatively load A: 32 x 32 floats, consecutive threads read
+        // consecutive k (coalesced); rounded to TF32 once here.
+        for (int idx = tid; idx < BLOCK_M * BLOCK_K; idx += BLOCK_THREADS) {
+            const int r = idx / BLOCK_K;
+            const int k = idx % BLOCK_K;
             const std::size_t gr = block_row + r;
-            const std::size_t gk = kk + k;
-
-            As[r][k] =
-                (gr < N && gk < N)
-                    ? A[gr * N + gk]
-                    : 0.0f;
+            const std::size_t gk = kt + k;
+            As[r][k] = wmma::__float_to_tf32((gr < N && gk < N) ? A[gr * N + gk] : 0.0f);
         }
 
-        // Cooperatively load B: 8 x 32 = 256 floats
-        for (int idx = tid; idx < WMMA_K * BLOCK_N; idx += BLOCK_THREADS) {
-
+        // Cooperatively load B: 32 x 32 floats, consecutive threads read
+        // consecutive columns (coalesced).
+        for (int idx = tid; idx < BLOCK_K * BLOCK_N; idx += BLOCK_THREADS) {
             const int k = idx / BLOCK_N;
             const int c = idx % BLOCK_N;
-
-            const std::size_t gk = kk + k;
+            const std::size_t gk = kt + k;
             const std::size_t gc = block_col + c;
-
-            Bs[k][c] =
-                (gk < N && gc < N)
-                    ? B[gk * N + gc]
-                    : 0.0f;
+            Bs[k][c] = wmma::__float_to_tf32((gk < N && gc < N) ? B[gk * N + gc] : 0.0f);
         }
 
         __syncthreads();
 
-        // Each warp operates on one 16x16 C tile.
-        wmma::load_matrix_sync(
-            a_frag,
-            &As[warp_row * WMMA_M][0],
-            WMMA_K);
-
-        wmma::load_matrix_sync(
-            b_frag,
-            &Bs[0][warp_col * WMMA_N],
-            BLOCK_N);
-
-        wmma::mma_sync(
-            c_frag,
-            a_frag,
-            b_frag,
-            c_frag);
+        // Each warp: four m16n16k8 MMAs on its 16x16 C tile.
+#pragma unroll
+        for (int kk = 0; kk < BLOCK_K; kk += WMMA_K) {
+            load_shared(a_frag, &As[warp_row * WMMA_M][kk], BLOCK_K + SMEM_PAD);
+            load_shared(b_frag, &Bs[kk][warp_col * WMMA_N], BLOCK_N + SMEM_PAD);
+            wmma::mma_sync(c_frag, a_frag, b_frag, c_frag);
+        }
 
         __syncthreads();
     }
 
-    if (row < N && col < N) {
-
-        wmma::store_matrix_sync(
-            &C[row * N + col],
-            c_frag,
-            N,
-            wmma::mem_row_major);
+    // Full 16x16 tiles are stored directly. A tile that crosses the matrix
+    // edge (N not a multiple of 16), or an ldm that is not a multiple of 4, goes
+    // through a per-warp shared buffer and is copied with bounds checks; the
+    // first version stored whole tiles past the edge and failed for such N.
+    __shared__ __align__(32) float Cs[BLOCK_THREADS / 32][WMMA_M * WMMA_N];
+    const bool full = row + WMMA_M <= N && col + WMMA_N <= N && N % 4 == 0;
+    if (full) {
+        wmma::store_matrix_sync(&C[row * N + col], c_frag, N, wmma::mem_row_major);
+    } else if (row < N && col < N) {
+        wmma::store_matrix_sync(Cs[warp_id], c_frag, WMMA_N, wmma::mem_row_major);
+        __syncwarp();
+        const int lane = tid % 32;
+        for (int e = lane; e < WMMA_M * WMMA_N; e += 32) {
+            const std::size_t r = row + e / WMMA_N;
+            const std::size_t c = col + e % WMMA_N;
+            if (r < N && c < N) C[r * N + c] = Cs[warp_id][e];
+        }
     }
 }
 
@@ -473,7 +487,7 @@ int main(int argc, char* argv[]) {
          << "compiler,compiler_flags\n";
 
     file << "W03_GEMM_GPU_S3_HWACC_TENSOR_CORE,"
-         << "W03_GEMM,GPU,S3_HWACC,TENSOR_CORE_TF32,"
+         << "W03_GEMM,GPU,S3_HWACC,TENSOR_CORE_TF32_K32_LDS,"
          << N << ","
          << iterations << ","
          << repetitions << ","

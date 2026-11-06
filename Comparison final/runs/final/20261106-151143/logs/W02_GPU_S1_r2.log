@@ -1,0 +1,58 @@
+========================================
+W02 DOT PRODUCT GPU S1 BASELINE
+========================================
+N                    : 33554432
+Iterations            : 20
+Repetitions           : 5
+Warmup                : 2
+Block size            : 256
+FLOPs / element       : 2
+Bytes / element       : 8
+Operational Intensity : 0.25 FLOP/Byte
+Grid size             : 131072
+
+Repetition 1/5
+  Average time (ms) : 43.4412
+  GFLOP/s            : 1.5448
+  Bandwidth (GB/s)   : 6.1793
+  Operational Intensity: 0.2500 FLOP/Byte
+
+Repetition 2/5
+  Average time (ms) : 43.4496
+  GFLOP/s            : 1.5445
+  Bandwidth (GB/s)   : 6.1781
+  Operational Intensity: 0.2500 FLOP/Byte
+
+Repetition 3/5
+  Average time (ms) : 43.4378
+  GFLOP/s            : 1.5449
+  Bandwidth (GB/s)   : 6.1798
+  Operational Intensity: 0.2500 FLOP/Byte
+
+Repetition 4/5
+  Average time (ms) : 43.4590
+  GFLOP/s            : 1.5442
+  Bandwidth (GB/s)   : 6.1767
+  Operational Intensity: 0.2500 FLOP/Byte
+
+Repetition 5/5
+  Average time (ms) : 43.5254
+  GFLOP/s            : 1.5418
+  Bandwidth (GB/s)   : 6.1673
+  Operational Intensity: 0.2500 FLOP/Byte
+
+========================================
+SUMMARY
+========================================
+Mean time (ms)      : 43.4626 ± 0.0361
+Mean GFLOP/s        : 1.5441 ± 0.0013
+Mean bandwidth GB/s : 6.1762 ± 0.0051
+Result              : 9301967.5014937837
+FP32 reference      : 8674097.0000000000
+Double reference    : 9301967.5014937129
+Error vs FP32 (%)   : 7.2384537721
+Error vs double (%) : 0.0000000000
+Correct             : YES
+
+CSV saved to:
+results/raw/FINAL/20261106-151143/csv/W02_GPU_S1_r2.csv

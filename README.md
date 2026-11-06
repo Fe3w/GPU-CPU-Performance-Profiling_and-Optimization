@@ -26,38 +26,38 @@ Every workload follows the same ladder:
 
 ## Key results
 
-All numbers are from **one session** (run `20261106-141652`, commit `5b61fa3`) that re-ran every stage of W01–W04 with the same protocol: 2 warm-ups, 20 timed iterations, 5 repetitions, mean ± SD; GPU stages in 3 interleaved rounds (median of the round means). **All 34 stage runs passed their correctness check.** The full tables (± SD, GFLOP/s or GB/s, speedup per step, error against double precision, clocks, comparison with earlier runs) are in [`docs/RESULTS_SUMMARY.md`](docs/RESULTS_SUMMARY.md) and [`docs/results/final_results.csv`](docs/results/final_results.csv).
+All numbers are from **one session** (run `20261106-151143`, commit `7f0e5f6`) that re-ran every stage of W01–W04 with the same protocol: 2 warm-ups, 20 timed iterations, 5 repetitions, mean ± SD; GPU stages in 3 interleaved rounds (median of the round means). **All 34 stage runs passed their correctness check.** The full tables (± SD, GFLOP/s or GB/s, speedup per step, error against double precision, clocks, comparison with earlier runs) are in [`docs/RESULTS_SUMMARY.md`](docs/RESULTS_SUMMARY.md) and [`docs/results/final_results.csv`](docs/results/final_results.csv).
 
 | Workload | Device | S1 → best stage | Speedup | Why |
 |---|---|---|---|---|
-| W01 Vector Add, N = 33.5 M | GPU | 1.824 → 1.823 ms (S2) | **1.00×** | Both kernels stream 221 GB/s, 86% of the 256 GB/s nominal DRAM bandwidth: memory-bound, so better code cannot help |
-| | CPU | 81.1 → 7.80 ms (S3, 6 threads) | **10.4×** | All of it from threads (S2 10.4×); AVX2 adds nothing (1.00×) because 6 threads already reach 52 GB/s of DRAM bandwidth |
-| W02 Dot Product, N = 33.5 M | GPU | 43.4 → 1.27 ms (S2) | **34.1×** | S1 serializes on one atomic address; the block reduction streams 212 GB/s |
-| | CPU | 64.2 → 3.96 ms (S3, 6 threads) | **16.2×** | Threads 13.5×, then 8-wide FMA 1.20× (bandwidth-limited) |
-| W03 GEMM, N = 1024 | GPU | 2.54 → 0.603 ms (S3) | **4.2×** | Shared-memory tiling 1.45×, then TF32 Tensor Cores 2.9× (`HMMA` verified in SASS) |
-| | CPU | 2923 → 25.7 ms (S3, 8 threads) | **114×** | Cache blocking + threads 32.8×, then 8-wide FMA 3.5× |
-| W04 Attention, N = 2048 | GPU | 32.0 → 0.592 ms (S3 FP16) | **54.0×** | Kernel quality 3.39× · fusion + register tiling 3.13× · FP16 Tensor Cores 5.10×; 14.5 TFLOP/s |
-| | CPU | 1206 → 12.9 ms (S3, 20 threads) | **93.2×** | Fusion + blocking + threads 31.7×, then AVX2/FMA and a vector `exp` 2.94× |
+| W01 Vector Add, N = 33.5 M | GPU | 1.796 → 1.796 ms (S2) | **1.00×** | Both kernels stream 224 GB/s, 88% of the 256 GB/s nominal DRAM bandwidth: memory-bound, so better code cannot help |
+| | CPU | 79.9 → 7.82 ms (S3, 6 threads) | **10.2×** | All of it from threads (S2 10.3×); AVX2 adds nothing (0.99×) because 6 threads already reach 52 GB/s of DRAM bandwidth |
+| W02 Dot Product, N = 33.5 M | GPU | 43.4 → 1.26 ms (S2) | **34.5×** | S1 serializes on one atomic address; the block reduction streams 214 GB/s |
+| | CPU | 63.4 → 3.96 ms (S3, 6 threads) | **16.0×** | Threads 13.2×, then 8-wide FMA 1.21× (bandwidth-limited) |
+| W03 GEMM, N = 1024 | GPU | 2.46 → 0.472 ms (S3) | **5.2×** | Shared-memory tiling 1.36×, then TF32 Tensor Cores 3.8× (`HMMA` verified in SASS; 32×32 k-tile 32 block, fragments loaded from shared memory) |
+| | CPU | 2932 → 25.7 ms (S3, 8 threads) | **114×** | Cache blocking + threads 32.9×, then 8-wide FMA 3.5× |
+| W04 Attention, N = 2048 | GPU | 32.1 → 0.640 ms (S3 FP16) | **50.1×** | Kernel quality 3.38× · fusion + register tiling 3.15× · FP16 Tensor Cores 4.70×; 13.5 TFLOP/s |
+| | CPU | 1188 → 12.9 ms (S3, 20 threads) | **92.1×** | Fusion + blocking + threads 31.5×, then AVX2/FMA and a vector `exp` 2.93× |
 
 **Complete comparison package:** [`Comparison final/`](Comparison%20final/README.md) holds the [Complete Brief](Comparison%20final/Complete%20Brief.md) (goals, method, results, explanations, limitations), every relevant run as CSV, the profiler exports, and comparison graphs.
 
-CPU vs GPU in the same session: the best GPU stage is 4.3× (W01), 3.1× (W02), 42.6× (W03) and 21.8× (W04, N = 2048) faster than the best CPU stage.
+CPU vs GPU in the same session: the best GPU stage is 4.3× (W01), 3.1× (W02), 54.5× (W03) and 20.1× (W04, N = 2048) faster than the best CPU stage.
 
 W04 in more detail (N = 2048, GPU):
-- The fused FP32 kernel (S2b, 3.02 ms) is 1.13× faster than a cuBLAS-based unfused reference (3.43 ms) at the laptop's 55 W power limit. That ratio depends on the clock: at an equal, locked SM clock the reference is faster, because it is memory-bound and the fused kernel is compute-bound.
+- The fused FP32 kernel (S2b, 3.01 ms) is 1.11× faster than a cuBLAS-based unfused reference (3.35 ms) at the laptop's 55 W power limit. That ratio depends on the clock: at an equal, locked SM clock the reference is faster, because it is memory-bound and the fused kernel is compute-bound.
 - Fusion removes 24–31× of the DRAM traffic (Nsight Compute), but by itself it saves only ~15% of the time. Most of S2a → S2b is register tiling. S2a's GEMMs were not DRAM-bound either; only its softmax was.
-- The FP16 Tensor Core kernel reaches 14.5 TFLOP/s and is latency-bound at 2 warps per scheduler: no execution unit is saturated.
+- The FP16 Tensor Core kernel reaches 13.5 TFLOP/s and is latency-bound at 2 warps per scheduler: no execution unit is saturated.
 - The development history (autotuning, profiling verdicts, TF32 fix) is in [`docs/results/W04_phase_results.md`](docs/results/W04_phase_results.md).
 
 ### Figures
 
 ![Speedup of every stage vs its own S1, one session](docs/figures/final/speedup_all.png)
 
-*Every stage of W01–W04 as a speedup over the workload's own S1 on the same device (run `20261106-141652`).*
+*Every stage of W01–W04 as a speedup over the workload's own S1 on the same device (run `20261106-151143`).*
 
 ![W04 factored speedups](docs/figures/w04/e2_factored_speedup.png)
 
-*W04 GPU speedup factored into kernel quality (S1 → S2a), fusion + register tiling (S2a → S2b) and Tensor Cores (S2b → S3), at N = 1024 and 2048 (GPU N sweep `20261106-114338`, 3 interleaved rounds; the final re-test agrees within 5%, except S3 FP16 at N = 2048: 0.646 → 0.592 ms, −8%).*
+*W04 GPU speedup factored into kernel quality (S1 → S2a), fusion + register tiling (S2a → S2b) and Tensor Cores (S2b → S3), at N = 1024 and 2048 (GPU N sweep `20261106-114338`, 3 interleaved rounds; the final re-test agrees within 4% at N = 2048 and within 10% at N = 1024).*
 
 ![W04 measured-traffic Roofline](docs/figures/w04/e3_roofline.png)
 
@@ -69,8 +69,9 @@ W04 in more detail (N = 2048, GPU):
 |---|---|---|
 | W01–W03 | benchmarks, profiling, analysis | done |
 | W04 P0–P6 | harness and reference, CPU S1–S3, GPU S1/S2a/REF, fused S2b, Tensor Core S3, autotuning, profiling | done ([phase log](docs/results/W04_phase_results.md)) |
-| W04 P7 | live demo integration | done (the demo kit is not part of this repository) |
+| W04 P7 | live demo integration | done: [`demo_kit/`](demo_kit/README.md), runs from a clone |
 | P8 | final paired re-test of W01–W04, consolidated results, release | done: 34/34 stages correct, [`docs/RESULTS_SUMMARY.md`](docs/RESULTS_SUMMARY.md) |
+| After P8 | W03 GPU S3 kernel optimized (1.26× at N = 1024 in a paired A/B, correct at any N), demo kit runs from a clone, full re-test repeated | done: run `20261106-151143` |
 
 ## Requirements
 
@@ -143,6 +144,20 @@ python3 tools/final_summary.py results/raw/FINAL/<timestamp> --publish-docs  # a
 
 The comparison with earlier runs uses `docs/results/reference_values.csv`. Changes over 10% are flagged and explained in `docs/results/deviation_notes.md`.
 
+## Live demo
+
+`demo_kit/` runs the benchmarks live, prints a speedup scoreboard and draws the race charts. It uses the binaries in this repository's `build/` folder, so it works from a clone after `make legacy w04`:
+
+```bash
+./demo_kit/demo.sh check              # preflight: binaries, GPU, profilers
+./demo_kit/demo.sh race w04           # W04 GPU race, N = 2048 (~10 s); also: all, gpu, w01, w02, w03, w04cpu
+ROUNDS=3 ./demo_kit/demo.sh race gpu  # 3 interleaved rounds, median over rounds
+./demo_kit/demo.sh fusion --backup    # W04 DRAM bytes S2a vs S2b from the recorded Nsight Compute run
+./demo_kit/demo.sh plot               # charts and tables for the newest race, into results/live/<timestamp>/
+```
+
+`./demo_kit/demo.sh fusion` without `--backup` and `./demo_kit/demo.sh ncu` run Nsight Compute, which needs GPU performance counters (root, or the driver option `NVreg_RestrictProfilingOnlyToAdminUsers=0` with `NCU_SUDO=""`). Paths and tools are set in `demo_kit/demo.conf`; any of them can be overridden from the environment (`PROJECT=/other/checkout`, `NCU=/path/to/ncu`, `VTUNE=...`). The presenter's guide is [`demo_kit/DEMO_RUNBOOK.md`](demo_kit/DEMO_RUNBOOK.md).
+
 ## Further W04 experiments
 
 ```bash
@@ -166,6 +181,7 @@ tests/                W04 correctness tests
 scripts/              run_all.sh (final re-test), W04 sweeps and profiling
 tools/                summaries and plots
 docs/                 results summary, W04 plan, figures
+demo_kit/             live demo: race, scoreboard, charts, profiler cues
 Comparison final/     complete brief, consolidated data, all relevant runs, comparison graphs
 ```
 
@@ -183,7 +199,8 @@ File names encode the stage: `W04_ATTENTION_GPU_S2b_SWOPT_FUSED.cu` = workload 4
 - **Laptop clocks and power.** The GPU runs at its default 55 W power limit, so every stage runs at its own clock (1600–2700 MHz SM) and the GPU stage ratios hold at equal power, not equal clock. Ratios against the memory-bound cuBLAS reference change by ~30% at a locked SM clock. Memory-bound GPU stages follow the memory clock (7001 or 8001 MHz), which the driver raises only after sustained load. The CPU reaches 72–96 °C under load and its clock follows; long CPU runs can differ by up to ~24% between sessions. Locking clocks needs root and was not done.
 - **Nominal Roofline ceilings.** Peak bandwidth and FLOP rates are vendor nominal values or derived from the measured clock, not measured with a microbenchmark.
 - **Single machine.** Every number comes from one laptop, one driver and one compiler version. Other GPUs and CPUs will give other ratios.
-- **Earlier W01–W03 records.** Some W01–W03 results recorded in October could not be reproduced within 10% (W02 GPU S2, W03 GPU, W01 CPU S1). The final values are the re-measured ones; the differences and their known causes are listed in `docs/RESULTS_SUMMARY.md`.
+- **W03 GPU S3 is not a tuned GEMM.** It is a 32×32-block WMMA kernel (4 warps of 16×16, TF32, error 0.004% vs double); cuBLAS-class kernels use larger register tiles, double buffering and asynchronous copies.
+- **Earlier W01–W03 records.** Some W01–W03 results recorded in October could not be reproduced within 10% (W02 GPU S2, W03 GPU S1/S2, W01 CPU S1). The final values are the re-measured ones; the differences and their known causes are listed in `docs/RESULTS_SUMMARY.md`.
 
 ## References
 
