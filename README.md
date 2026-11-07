@@ -52,16 +52,20 @@ Each workload is written **three times**, from the simplest correct code to code
 | **S2 · Software** | better algorithm, parallelism | OpenMP threads, cache blocking, fusion | coalescing, shared-memory tiles, block reductions, **kernel fusion** |
 | **S3 · Hardware** | special units | **AVX2 / FMA** vector instructions | **TF32 / FP16 Tensor Cores** |
 
-## Watch the 72-second story
-
+## Watch the 
 <p align="center">
-  <a href="docs/media/comparison_video.mp4">
-    <img src="docs/media/comparison_video_poster.png" width="720" alt="Comparison video: click to play">
-  </a>
+  <video src="https://github.com/user-attachments/assets/09a2eef4-9177-4cbb-a606-08fad9ee938b"
+         width="720" controls playsinline preload="metadata">
+    <a href="https://github.com/user-attachments/assets/09a2eef4-9177-4cbb-a606-08fad9ee938b">
+      Play the comparison video
+    </a>
+  </video>
   <br>
-  <sub>▶ <b><a href="docs/media/comparison_video.mp4">Play the comparison video</a></b>: every workload, animated from the measured data.</sub>
+  <sub>
+    ▶ <b><a href="https://github.com/user-attachments/assets/09a2eef4-9177-4cbb-a606-08fad9ee938b">Play the comparison video</a></b>:
+    every workload, animated from the measured data.
+  </sub>
 </p>
-
 ---
 
 ## Key results
