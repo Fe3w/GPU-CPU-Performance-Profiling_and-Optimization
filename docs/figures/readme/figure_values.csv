@@ -1,0 +1,107 @@
+figure,item,quantity,value,source
+hero,W04 CPU best (S3) vs S1,x_vs_s1,92.1488,final_results.csv run 20261106-151143
+hero,W04 GPU best (S3_FP16) vs S1,x_vs_s1,50.1178,final_results.csv run 20261106-151143
+hero,W04 best CPU ms / best GPU ms,ratio,20.1300271592714,derived from mean_ms
+hero,W03 CPU best (S3) vs S1,x_vs_s1,113.9294,final_results.csv run 20261106-151143
+hero,W03 GPU best (S3) vs S1,x_vs_s1,5.2052,final_results.csv run 20261106-151143
+hero,W03 best CPU ms / best GPU ms,ratio,54.538657652693594,derived from mean_ms
+hero,W02 CPU best (S3) vs S1,x_vs_s1,16.0078,final_results.csv run 20261106-151143
+hero,W02 GPU best (S2) vs S1,x_vs_s1,34.5395,final_results.csv run 20261106-151143
+hero,W02 best CPU ms / best GPU ms,ratio,3.148889240513878,derived from mean_ms
+hero,W01 CPU best (S2) vs S1,x_vs_s1,10.2875,final_results.csv run 20261106-151143
+hero,W01 GPU best (S2) vs S1,x_vs_s1,1.0,final_results.csv run 20261106-151143
+hero,W01 best CPU ms / best GPU ms,ratio,4.326896746033116,derived from mean_ms
+comparison,W01 CPU S1 N=33554432,mean_ms,79.94195,final_results.csv run 20261106-151143
+comparison,W01 CPU S1 N=33554432,x_vs_s1,1.0,final_results.csv run 20261106-151143
+comparison,W01 CPU S2 N=33554432,mean_ms,7.770808,final_results.csv run 20261106-151143
+comparison,W01 CPU S2 N=33554432,x_vs_s1,10.2875,final_results.csv run 20261106-151143
+comparison,W01 CPU S3 N=33554432,mean_ms,7.81948,final_results.csv run 20261106-151143
+comparison,W01 CPU S3 N=33554432,x_vs_s1,10.2234,final_results.csv run 20261106-151143
+comparison,W01 GPU S1 N=33554432,mean_ms,1.795931,final_results.csv run 20261106-151143
+comparison,W01 GPU S1 N=33554432,x_vs_s1,1.0,final_results.csv run 20261106-151143
+comparison,W01 GPU S2 N=33554432,mean_ms,1.795968,final_results.csv run 20261106-151143
+comparison,W01 GPU S2 N=33554432,x_vs_s1,1.0,final_results.csv run 20261106-151143
+comparison,W01 best CPU / best GPU,ratio,4.326896746033116,derived from mean_ms
+comparison,W02 CPU S1 N=33554432,mean_ms,63.394099,final_results.csv run 20261106-151143
+comparison,W02 CPU S1 N=33554432,x_vs_s1,1.0,final_results.csv run 20261106-151143
+comparison,W02 CPU S2 N=33554432,mean_ms,4.78882,final_results.csv run 20261106-151143
+comparison,W02 CPU S2 N=33554432,x_vs_s1,13.2379,final_results.csv run 20261106-151143
+comparison,W02 CPU S3 N=33554432,mean_ms,3.96021,final_results.csv run 20261106-151143
+comparison,W02 CPU S3 N=33554432,x_vs_s1,16.0078,final_results.csv run 20261106-151143
+comparison,W02 GPU S1 N=33554432,mean_ms,43.438642,final_results.csv run 20261106-151143
+comparison,W02 GPU S1 N=33554432,x_vs_s1,1.0,final_results.csv run 20261106-151143
+comparison,W02 GPU S2 N=33554432,mean_ms,1.257653,final_results.csv run 20261106-151143
+comparison,W02 GPU S2 N=33554432,x_vs_s1,34.5395,final_results.csv run 20261106-151143
+comparison,W02 best CPU / best GPU,ratio,3.148889240513878,derived from mean_ms
+comparison,W03 CPU S1 N=1024,mean_ms,2931.928834,final_results.csv run 20261106-151143
+comparison,W03 CPU S1 N=1024,x_vs_s1,1.0,final_results.csv run 20261106-151143
+comparison,W03 CPU S2 N=1024,mean_ms,89.045064,final_results.csv run 20261106-151143
+comparison,W03 CPU S2 N=1024,x_vs_s1,32.9263,final_results.csv run 20261106-151143
+comparison,W03 CPU S3 N=1024,mean_ms,25.734611,final_results.csv run 20261106-151143
+comparison,W03 CPU S3 N=1024,x_vs_s1,113.9294,final_results.csv run 20261106-151143
+comparison,W03 GPU S1 N=1024,mean_ms,2.456146,final_results.csv run 20261106-151143
+comparison,W03 GPU S1 N=1024,x_vs_s1,1.0,final_results.csv run 20261106-151143
+comparison,W03 GPU S2 N=1024,mean_ms,1.801477,final_results.csv run 20261106-151143
+comparison,W03 GPU S2 N=1024,x_vs_s1,1.3634,final_results.csv run 20261106-151143
+comparison,W03 GPU S3 N=1024,mean_ms,0.47186,final_results.csv run 20261106-151143
+comparison,W03 GPU S3 N=1024,x_vs_s1,5.2052,final_results.csv run 20261106-151143
+comparison,W03 best CPU / best GPU,ratio,54.538657652693594,derived from mean_ms
+comparison,W04 CPU S1 N=2048,mean_ms,1187.724194,final_results.csv run 20261106-151143
+comparison,W04 CPU S1 N=2048,x_vs_s1,1.0,final_results.csv run 20261106-151143
+comparison,W04 CPU S2 N=2048,mean_ms,37.752334,final_results.csv run 20261106-151143
+comparison,W04 CPU S2 N=2048,x_vs_s1,31.4609,final_results.csv run 20261106-151143
+comparison,W04 CPU S3 N=2048,mean_ms,12.889196,final_results.csv run 20261106-151143
+comparison,W04 CPU S3 N=2048,x_vs_s1,92.1488,final_results.csv run 20261106-151143
+comparison,W04 GPU S1 N=2048,mean_ms,32.090286,final_results.csv run 20261106-151143
+comparison,W04 GPU S1 N=2048,x_vs_s1,1.0,final_results.csv run 20261106-151143
+comparison,W04 GPU S2a N=2048,mean_ms,9.490977,final_results.csv run 20261106-151143
+comparison,W04 GPU S2a N=2048,x_vs_s1,3.3811,final_results.csv run 20261106-151143
+comparison,W04 GPU S2b N=2048,mean_ms,3.010779,final_results.csv run 20261106-151143
+comparison,W04 GPU S2b N=2048,x_vs_s1,10.6585,final_results.csv run 20261106-151143
+comparison,W04 GPU S3_TF32 N=2048,mean_ms,1.140139,final_results.csv run 20261106-151143
+comparison,W04 GPU S3_TF32 N=2048,x_vs_s1,28.146,final_results.csv run 20261106-151143
+comparison,W04 GPU S3_FP16 N=2048,mean_ms,0.640297,final_results.csv run 20261106-151143
+comparison,W04 GPU S3_FP16 N=2048,x_vs_s1,50.1178,final_results.csv run 20261106-151143
+comparison,W04 GPU REF N=2048,mean_ms,3.349404,final_results.csv run 20261106-151143
+comparison,W04 GPU REF N=2048,x_vs_s1,9.5809,final_results.csv run 20261106-151143
+comparison,W04 best CPU / best GPU,ratio,20.1300271592714,derived from mean_ms
+roofline,DRAM nominal,bytes/s,256000000000.0,8001 MHz x 2 x 128 bit / 8
+roofline,DRAM measured,bytes/s,224200000000.0,"W01 GPU, run 20261106-151143"
+roofline,FP32 / TF32,GFLOP/s,16404.48,256 FLOP/clk/SM x 24 SMs x 2670 MHz
+roofline,FP16 Tensor Cores,GFLOP/s,32808.96,512 FLOP/clk/SM x 24 SMs x 2670 MHz
+roofline,W01 S1 = S2 vector add,OI FLOP/byte,0.08333333333333333,algorithmic model
+roofline,W01 S1 = S2 vector add,GFLOP/s,18.683583333333335,final run 20261106-151143
+roofline,W01 S1 = S2 vector add,% of roof,87.57929687500001,roof = memory
+roofline,"W02 S1 dot, atomics",OI FLOP/byte,0.25,algorithmic model
+roofline,"W02 S1 dot, atomics",GFLOP/s,1.545,final run 20261106-151143
+roofline,"W02 S1 dot, atomics",% of roof,2.4140625,roof = memory
+roofline,W02 S2 block reduction,OI FLOP/byte,0.25,algorithmic model
+roofline,W02 S2 block reduction,GFLOP/s,53.622,final run 20261106-151143
+roofline,W02 S2 block reduction,% of roof,83.784375,roof = memory
+roofline,W03 S1 GEMM naive,OI FLOP/byte,170.66666666666666,algorithmic model
+roofline,W03 S1 GEMM naive,GFLOP/s,874.331,final run 20261106-151143
+roofline,W03 S1 GEMM naive,% of roof,5.329830631632335,roof = compute
+roofline,W03 S2 GEMM tiled,OI FLOP/byte,170.66666666666666,algorithmic model
+roofline,W03 S2 GEMM tiled,GFLOP/s,1192.068,final run 20261106-151143
+roofline,W03 S2 GEMM tiled,% of roof,7.266722261235955,roof = compute
+roofline,W03 S3 GEMM TF32,OI FLOP/byte,170.66666666666666,algorithmic model
+roofline,W03 S3 GEMM TF32,GFLOP/s,4551.108,final run 20261106-151143
+roofline,W03 S3 GEMM TF32,% of roof,27.743079939138582,roof = compute
+roofline,"W04 S1 naive, 3 kernels",OI FLOP/byte,8.458035786755584,measured (ncu)
+roofline,"W04 S1 naive, 3 kernels",GFLOP/s,264.0993521755896,W04 sweep 20261106-114338
+roofline,"W04 S1 naive, 3 kernels",% of roof,12.197135605069635,roof = memory
+roofline,"W04 S2a tiled, unfused",OI FLOP/byte,15.093059474093218,measured (ncu)
+roofline,"W04 S2a tiled, unfused",GFLOP/s,903.8397633662729,W04 sweep 20261106-114338
+roofline,"W04 S2a tiled, unfused",% of roof,23.392368404230524,roof = memory
+roofline,W04 cuBLAS reference,OI FLOP/byte,15.100202599501916,measured (ncu)
+roofline,W04 cuBLAS reference,GFLOP/s,2510.4398361959843,W04 sweep 20261106-114338
+roofline,W04 cuBLAS reference,% of roof,64.94221216915348,roof = memory
+roofline,W04 S2b fused,OI FLOP/byte,362.5037217894839,measured (ncu)
+roofline,W04 S2b fused,GFLOP/s,2840.256872142277,W04 sweep 20261106-114338
+roofline,W04 S2b fused,% of roof,17.31390981087043,roof = compute
+roofline,W04 S3 TF32,OI FLOP/byte,467.77494005464786,measured (ncu)
+roofline,W04 S3 TF32,GFLOP/s,7510.797769472985,W04 sweep 20261106-114338
+roofline,W04 S3 TF32,% of roof,45.78504024189115,roof = compute
+roofline,W04 S3 FP16,OI FLOP/byte,787.3577604918282,measured (ncu)
+roofline,W04 S3 FP16,GFLOP/s,13291.298798572063,W04 sweep 20261106-114338
+roofline,W04 S3 FP16,% of roof,40.51118596435871,roof = compute
