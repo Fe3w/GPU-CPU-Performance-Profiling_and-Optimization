@@ -1,17 +1,5 @@
 <div align="center">
 
-
-https://github.com/user-attachments/assets/4952e6a8-1183-4b14-8fb8-5b21692e072f
-
-<sub><b>CPU vs GPU race</b> · every version runs on one shared clock until the slowest finishes once · bar length = speed, to true scale · slows to ¼ speed halfway</sub>
-
-| **Vector add** | **Dot product** | **Matrix multiply** | **Attention** |
-|:---:|:---:|:---:|:---:|
-| GPU **45×** faster<br>memory speed is the limit | GPU **50×** faster<br>smarter sums: **34.5×** | GPU **6,200×** faster<br>Tensor Cores | GPU **1,850×** faster<br>fusion + Tensor Cores: **50×** |
-
-<sub>Speedups are against the simple single-thread CPU code.</sub>
-
-
 # CPU vs GPU: Performance Profiling and Optimization
 
 ### Making AI and scientific code **up to 114× faster** on a laptop, and proving *why*
@@ -21,6 +9,13 @@ https://github.com/user-attachments/assets/4952e6a8-1183-4b14-8fb8-5b21692e072f
 ![Tensor Cores](https://img.shields.io/badge/Tensor%20Cores-TF32%20%7C%20FP16-76B900?logo=nvidia&logoColor=white)
 ![OpenMP](https://img.shields.io/badge/OpenMP-AVX2%20%2F%20FMA-5A5A5A)
 ![Profiling](https://img.shields.io/badge/profiling-Nsight%20%7C%20VTune%20%7C%20perf-2a78d6)
+
+<br>
+
+NEW_RACE_VIDEO_URL
+
+**CPU vs GPU race:** every version of each task runs on one shared clock until the slowest finishes once. Bar length is speed, to true scale.<br>
+GPU vs the simple CPU code: **45×** vector add · **50×** dot product · **6,200×** matrix multiply · **1,850×** attention
 
 </div>
 
