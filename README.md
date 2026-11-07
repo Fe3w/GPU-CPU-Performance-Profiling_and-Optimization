@@ -3,6 +3,14 @@
 
 https://github.com/user-attachments/assets/4952e6a8-1183-4b14-8fb8-5b21692e072f
 
+<sub><b>CPU vs GPU race</b> · every version runs on one shared clock until the slowest finishes once · bar length = speed, to true scale · slows to ¼ speed halfway</sub>
+
+| **Vector add** | **Dot product** | **Matrix multiply** | **Attention** |
+|:---:|:---:|:---:|:---:|
+| GPU **45×** faster<br>memory speed is the limit | GPU **50×** faster<br>smarter sums: **34.5×** | GPU **6,200×** faster<br>Tensor Cores | GPU **1,850×** faster<br>fusion + Tensor Cores: **50×** |
+
+<sub>Speedups are against the simple single-thread CPU code.</sub>
+
 
 # CPU vs GPU: Performance Profiling and Optimization
 
@@ -31,7 +39,7 @@ https://github.com/user-attachments/assets/4952e6a8-1183-4b14-8fb8-5b21692e072f
 ## In plain words
 
 - **Same answer, far less waiting.** The attention operation inside large language models (LLMs) ran **32 ms → 0.64 ms** for one 8-head layer after optimization.
-- **Far less memory.** At 8,192 tokens, the simple attention needs **2,112 MiB** of GPU memory; the optimized one needs **64 MiB**, **33× less**. Less memory per layer is what lets models read longer documents.
+- **Far less memory.** At 8,192 tokens, the simple attention needs **2,112 MiB** of GPU memory; the fused one needs **64 MiB**, **33× less**. Less memory per layer is what lets models read longer documents.
 - **Knowing when to stop.** Vector add was already at **88% of the memory-bandwidth limit**, so no code change could make it faster. Measuring that first saves engineering time.
 - **Every speedup is explained**, not just measured: hardware profilers show *which* limit each version hits.
 
@@ -78,7 +86,7 @@ https://github.com/user-attachments/assets/09a2eef4-9177-4cbb-a606-08fad9ee938b
 | | CPU | 63.4 → 3.96 ms | **16.0×** | Threads 13.2×, then 8-wide FMA 1.21× |
 | **W03** Matrix Multiply | GPU | 2.46 → 0.472 ms | **5.2×** | Shared-memory tiles 1.36×, then **Tensor Cores 3.8×** |
 | | CPU | 2,932 → 25.7 ms | **114×** | **Cache blocking + threads 32.9×**, then 8-wide FMA 3.5× |
-| **W04** Attention | GPU | 32.1 → 0.640 ms | **50.1×** | Better kernels 3.38× · **fusion** 3.15× · **FP16 Tensor Cores** 4.70× |
+| **W04** Attention | GPU | 32.1 → 0.640 ms | **50.1×** | Better kernels 3.38× · **fusion + register tiling** 3.15× · **FP16 Tensor Cores** 4.70× |
 | | CPU | 1,188 → 12.9 ms | **92.1×** | Fusion + blocking + threads 31.5×, then AVX2 with a vectorized `exp` 2.93× |
 
 **Best GPU vs best CPU:** **4.3×** (W01) · **3.1×** (W02) · **54.5×** (W03) · **20.1×** (W04).
@@ -87,7 +95,7 @@ https://github.com/user-attachments/assets/09a2eef4-9177-4cbb-a606-08fad9ee938b
 
 - **Memory-bound work** (W01, W02): the GPU wins by about its bandwidth advantage, **3–4×**. Beyond that, only moving fewer bytes helps.
 - **Compute-bound work** (W03, W04): the GPU wins by **20–55×**, once the code reuses data on chip and uses Tensor Cores.
-- **Fusion changes the problem.** Fusing W04 cut DRAM traffic **24–31×**, turning a memory-bound operation into a compute-bound one. This is the idea behind **FlashAttention**, now standard in deep-learning frameworks.
+- **Fusion changes the problem.** Fusing W04 cut DRAM traffic **24×** at 2,048 tokens (up to **42×** at 4,096), turning a memory-bound operation into a compute-bound one. This is the idea behind **FlashAttention**, now standard in deep-learning frameworks.
 
 <sub>One session, run `20261106-151143`: 2 warm-ups, 20 timed iterations, 5 repetitions; GPU stages median of 3 rounds. Laptop at its default 55 W power limit. Full tables and method: [`docs/RESULTS_SUMMARY.md`](docs/RESULTS_SUMMARY.md).</sub>
 
@@ -102,11 +110,11 @@ https://github.com/user-attachments/assets/09a2eef4-9177-4cbb-a606-08fad9ee938b
 A Roofline shows the **two limits** every kernel faces. The **diagonal** is memory bandwidth (256 GB/s). The **flat lines** are peak compute (16.4 TFLOP/s for FP32/TF32, 32.8 for FP16 Tensor Cores). A kernel can't go above the lower of the two at its **operational intensity**, the FLOPs it does per byte it moves.
 
 - **W01 and W02 sit on the diagonal** at **84–88%** of the bandwidth roof: memory-bound, close to the limit.
-- **Unfused attention** (S1, S2a, cuBLAS) sits at **~15 FLOP/byte**, deep in memory-bound territory, because a huge score table goes through DRAM.
+- **Unfused attention** (S1, S2a, cuBLAS) sits at **8–15 FLOP/byte**, deep in memory-bound territory, because a huge score table goes through DRAM.
 - **Fusion moves W04 right**, to **363 FLOP/byte**; **Tensor Cores move it up**, to **13.3 TFLOP/s**.
 - **Room left:** the Tensor Core kernels reach **28–46%** of their compute roof; tuned libraries go further with larger register tiles and asynchronous copies.
 
-<sub>W04 points use DRAM bytes measured with Nsight Compute; W01–W03 use algorithmic bytes. Compute roofs from the Ada whitepaper at the measured 2,670 MHz clock. Every value: [`figure_values.csv`](docs/figures/readme/figure_values.csv).</sub>
+<sub>W04 points use DRAM bytes measured with Nsight Compute (W04 sweep `20261106-114338`, 2,048 tokens); W01–W03 use algorithmic bytes. Compute roofs from the Ada whitepaper at the measured 2,670 MHz clock. Every value: [`figure_values.csv`](docs/figures/readme/figure_values.csv).</sub>
 
 <details>
 <summary><b>W04 deep dive: where the 50× comes from, and how it scales with sequence length</b></summary>
