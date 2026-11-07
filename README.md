@@ -12,7 +12,9 @@
 
 <br>
 
-NEW_RACE_VIDEO_URL
+
+https://github.com/user-attachments/assets/5769e247-a5a5-4025-8220-d673e66bb0be
+
 
 **CPU vs GPU race:** every version of each task runs on one shared clock until the slowest finishes once. Bar length is speed, to true scale.<br>
 GPU vs the simple CPU code: **45×** vector add · **50×** dot product · **6,200×** matrix multiply · **1,850×** attention
