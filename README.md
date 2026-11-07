@@ -1,7 +1,7 @@
 <div align="center">
 
 
-RACE_VIDEO_URL
+https://github.com/user-attachments/assets/4952e6a8-1183-4b14-8fb8-5b21692e072f
 
 
 # CPU vs GPU: Performance Profiling and Optimization
@@ -15,19 +15,6 @@ RACE_VIDEO_URL
 ![Profiling](https://img.shields.io/badge/profiling-Nsight%20%7C%20VTune%20%7C%20perf-2a78d6)
 
 </div>
-
-**CPU vs GPU race** · every version of each task races on one shared clock. The race ends when the slowest version (the simple CPU code) finishes once. Longer bars mean faster code, drawn to true scale. The race slows to ¼ speed halfway through so you can see the differences.
-
-- **Vector add:** the GPU is about **45×** faster than the simple CPU code. Better GPU code doesn't help, because memory speed is the limit.
-- **Dot product:** smarter GPU code makes it **34.5×** faster, and about **50×** faster than the simple CPU code.
-- **Matrix multiply:** optimising the CPU code makes it **114×** faster. The GPU's Tensor Cores go further: about **6,200×** faster than the simple CPU code and **55×** faster than the best CPU code.
-- **Attention:** fusing the steps into one kernel, then using FP16 Tensor Cores, makes the GPU **50×** faster than its own simple version, and about **1,850×** faster than the simple CPU code.
-
-## Watch the 72-second story
-
-https://github.com/user-attachments/assets/09a2eef4-9177-4cbb-a606-08fad9ee938b
-
-<sub>Every workload, animated from the measured data. If the player doesn't load: <a href="https://github.com/user-attachments/assets/09a2eef4-9177-4cbb-a606-08fad9ee938b">open the video</a>.</sub>
 
 <p align="center">
   <img src="docs/figures/readme/hero_speedup.png" alt="Speedup of the best optimized version over the simple version, per workload, CPU and GPU" width="100%">
@@ -68,6 +55,12 @@ Each workload is written **three times**, from the simplest correct code to code
 | **S1 · Baseline** | simplest correct code | one thread, plain loops | one thread per output |
 | **S2 · Software** | better algorithm, parallelism | OpenMP threads, cache blocking, fusion | coalescing, shared-memory tiles, block reductions, **kernel fusion** |
 | **S3 · Hardware** | special units | **AVX2 / FMA** vector instructions | **TF32 / FP16 Tensor Cores** |
+
+## Watch the 72-second story
+
+https://github.com/user-attachments/assets/09a2eef4-9177-4cbb-a606-08fad9ee938b
+
+<sub>Every workload, animated from the measured data. If the player doesn't load: <a href="https://github.com/user-attachments/assets/09a2eef4-9177-4cbb-a606-08fad9ee938b">open the video</a>.</sub>
 
 ---
 
